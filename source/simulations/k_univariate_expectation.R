@@ -65,12 +65,13 @@ print(scenario)
 ###############################################################
 ## start simulation code
 ###############################################################
-
+str(scenario)
 
 ###############################################################
 ## set simulation design elements
 ###############################################################
 n = params$n[scenario]
+print(n)
 nm = params$nm[scenario]
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
