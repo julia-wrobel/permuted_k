@@ -57,7 +57,7 @@ if(doLocal) {
   N_iter = 2
 }else{
   # defined from batch script params
-  scenario <- commandArgs(trailingOnly=TRUE)
+  scenario <- as.numeric(commandArgs(trailingOnly=TRUE))
 }
 
 
@@ -75,10 +75,10 @@ print(n)
 nm = params$nm[scenario]
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
+print(SEED.START)
 
 results = vector("list", length = N_iter)
 for(iter in 1:N_iter){
-  print(SEED.START)
   # set seed
   seed.iter = (SEED.START - 1)*N_iter + iter
   set.seed(seed.iter)
