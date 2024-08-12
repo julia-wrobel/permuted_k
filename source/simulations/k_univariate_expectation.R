@@ -60,6 +60,8 @@ if(doLocal) {
   scenario <- commandArgs(trailingOnly=TRUE)
 }
 
+
+print(scenario)
 ###############################################################
 ## start simulation code
 ###############################################################
@@ -75,6 +77,7 @@ SEED.START = params$seed_start[scenario]
 
 results = vector("list", length = N_iter)
 for(iter in 1:N_iter){
+  print(SEED.START)
   # set seed
   seed.iter = (SEED.START - 1)*N_iter + iter
   set.seed(seed.iter)
