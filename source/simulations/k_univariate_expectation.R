@@ -49,7 +49,7 @@ params = expand.grid(seed_start = seed_start,
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path("./output", Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
