@@ -6,7 +6,7 @@
 # comparing fperm to CSR to Kinhom,
 ####################################################################
 
-suppressPackageStartupMessages()
+#suppressPackageStartupMessages()
 
 library(spatstat.random)
 library(spatstat.geom)
