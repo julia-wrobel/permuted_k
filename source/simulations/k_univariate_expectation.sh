@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-2%2
+#SBATCH --array=3-36%36
 #SBATCH --job-name=univariate_expectation_job
 #SBATCH --partition=wrobel
 #SBATCH --output=univariate_expectation.out
