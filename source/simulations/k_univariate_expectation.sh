@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --array=1-36%36
+#SBATCH --array=1-2%2
 #SBATCH --job-name=univariate_expectation_job
-#SBATCH --partition=short-cpu
+#SBATCH --partition=wrobel
 #SBATCH --output=univariate_expectation.out
 #SBATCH --error=univariate_expectation.err
 
