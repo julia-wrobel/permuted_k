@@ -4,7 +4,7 @@
 get_k = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
 
 
-  # estimate K using border correction and no correction and tranlational correction
+  # estimate K using tranlational correction
   tic()
   k = Kcross(ppp_obj, i = "immune", j = "immune",
            r = r,
@@ -26,6 +26,15 @@ get_k = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
                r = r,
                correction = c("trans"))
   time_fperm = toc()
+
+  # calculate fperm statistic on 50% thinned data
+  tic()
+  ppp_obj_thin = rthin(ppp_obj, P = .5)
+  fperm_thin = Kest(ppp_obj_thin,
+                    r = r,
+                    correction = c("trans"))
+  time_fperm_thin = toc()
+
 
 
   # calculate perm statistic
@@ -52,9 +61,11 @@ get_k = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
                kinhomtheo = filter(as_tibble(kinhom), r %in% c(.05,.075, .1))$theo,
                kfperm = filter(as_tibble(fperm), r %in% c(.05,.075, .1))$trans,
                kperm = kperm$trans,
+               kfperm_thin = filter(as_tibble(fperm_thin), r %in% c(.05,.075, .1))$trans,
                time_kinhom = time_kinhom$toc - time_kinhom$tic,
                time_k = time_k$toc - time_k$tic,
                time_fperm = (time_fperm$toc - time_fperm$tic) + time_k,
+               time_fperm_thin = (time_fperm_thin$toc - time_fperm_thin$tic) + time_k,
                time_kperm = (time_perm$toc - time_perm$tic) + time_k)
 
 

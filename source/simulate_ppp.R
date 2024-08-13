@@ -109,9 +109,9 @@ simulate_holes <- function(ppp_obj){
 }
 
 circle_window <- function(){
-  w <- owin(c(-1,1), c(-1,1), mask=matrix(TRUE, 100,100))
+  w <- owin(c(-2,2), c(-2,2), mask=matrix(TRUE, 100,100))
   X <- raster.x(w)
   Y <- raster.y(w)
-  wm <- owin(w$xrange, w$yrange, mask=(X^2 + Y^2 <= 1))
+  wm <- owin(w$xrange, w$yrange, mask=(X^2 + Y^2 <= 4))
   wm
 }

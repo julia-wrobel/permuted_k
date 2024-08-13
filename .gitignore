@@ -8,7 +8,8 @@
 data
 analysis/*_cache/
 drafts/*_cache/
-.RData
+*.RData
+*RDA
 .Ruserdata
 
 *DS_Store

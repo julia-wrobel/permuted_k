@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-24%24
+#SBATCH --array=1-36%36
 #SBATCH --job-name=univariate_expectation_job
 #SBATCH --partition=short-cpu
 #SBATCH --output=univariate_expectation.out

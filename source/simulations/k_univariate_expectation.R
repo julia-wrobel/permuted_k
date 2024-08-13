@@ -35,7 +35,7 @@ source(here::here("source", "utils_fast.R"))
 ## set simulation design elements
 ###############################################################
 
-n = c(500, 2000) # we will need to go bigger
+n = c(500, 2000, 5000) # we will need to go bigger
 nm = c(50, 100, 500)
 type = c("hom", "inhom", "homClust", "inhomClust")
 
@@ -61,17 +61,14 @@ if(doLocal) {
 }
 
 
-print(scenario)
 ###############################################################
 ## start simulation code
 ###############################################################
-str(scenario)
 
 ###############################################################
 ## set simulation design elements
 ###############################################################
 n = params$n[scenario]
-print(n)
 nm = params$nm[scenario]
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
@@ -117,7 +114,7 @@ for(iter in 1:N_iter){
 } # end for loop
 
 
-filename = paste0(here::here("output", Date), "/k_univariate_", scenario, ".RDA")
+filename = paste0(here::here("output", Date), "/univariate_expectation_", scenario, ".RDA")
 save(results,
      file = filename)
 
