@@ -48,7 +48,7 @@ get_k = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
 
 
   tic()
-  perms = rlabel(ppp_obj, nsim = 1000)
+  perms = rlabel(ppp_obj, nsim = 10000)
   kperm = map_dfr(perms, kf)
   kperm = kperm %>% group_by(r) %>% summarise(trans = mean(trans)) %>% ungroup()
   time_perm = toc()

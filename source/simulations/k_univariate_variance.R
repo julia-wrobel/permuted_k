@@ -31,7 +31,7 @@ if(substring(wd, 2, 6) == "Users"){
 ## define or source functions used in code below
 ###############################################################
 source(here::here("source", "simulate_ppp.R"))
-source(here::here("source", "utils_k.R"))
+source(here::here("source", "utils_fast.R"))
 
 ###############################################################
 ## set simulation design elements
@@ -42,7 +42,7 @@ nm = c(50, 100, 500)
 type = c("hom", "inhom", "homClust", "inhomClust")
 
 seed_start = 1000
-N_iter = 50
+N_iter = 1000
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
