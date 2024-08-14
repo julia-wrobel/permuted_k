@@ -147,6 +147,6 @@ get_k_variance = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
 
 
 
-get_fperm_variance(){
+get_fperm_variance = function(){
 
 }
