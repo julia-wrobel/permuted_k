@@ -6,16 +6,14 @@
 # comparing fperm to CSR to Kinhom,
 ####################################################################
 
-#suppressPackageStartupMessages()
-
-library(spatstat.random)
-library(spatstat.geom)
-library(spatstat.explore)
-library(tibble)
-library(dplyr)
-library(purrr)
-library(tidyr)
-library(tictoc)
+suppressPackageStartupMessages(library(spatstat.random))
+suppressPackageStartupMessages(library(spatstat.geom))
+suppressPackageStartupMessages(library(spatstat.explore))
+suppressPackageStartupMessages(library(tibble))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(tictoc))
 
 
 wd = getwd()
@@ -55,7 +53,7 @@ dir.create(file.path(here::here("output"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 1
+  scenario = 25
   N_iter = 2
 }else{
   # defined from batch script params
@@ -74,7 +72,6 @@ n = params$n[scenario]
 nm = params$nm[scenario]
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
-print(SEED.START)
 
 results = vector("list", length = N_iter)
 for(iter in 1:N_iter){

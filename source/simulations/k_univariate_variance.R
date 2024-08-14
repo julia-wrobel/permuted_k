@@ -55,7 +55,7 @@ dir.create(file.path(here::here("output"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 1
+  scenario = 25
   N_iter = 2
 }else{
   # defined from batch script params
