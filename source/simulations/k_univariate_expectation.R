@@ -37,7 +37,7 @@ source(here::here("source", "utils_fast.R"))
 ## set simulation design elements
 ###############################################################
 
-n = c(500, 2000, 5000) # we will need to go bigger
+n = c(500, 2000, 5000)
 nm = c(50, 100, 500)
 type = c("hom", "inhom", "homClust", "inhomClust")
 
