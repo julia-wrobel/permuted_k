@@ -31,7 +31,7 @@ if(substring(wd, 2, 6) == "Users"){
 ## define or source functions used in code below
 ###############################################################
 source(here::here("source", "simulate_ppp.R"))
-source(here::here("source", "utils_fast.R"))
+source(here::here("source", "utils_k.R"))
 
 ###############################################################
 ## set simulation design elements

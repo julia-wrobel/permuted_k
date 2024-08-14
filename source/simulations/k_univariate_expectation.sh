@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=25-36%36
+#SBATCH --array=1-36%36
 #SBATCH --job-name=univariate_expectation_job
 #SBATCH --mem=40G
 #SBATCH --partition=wrobel
