@@ -29,21 +29,21 @@ mxsim_univariate <- function(lambda_n,
 
   if(type == "hom"){
     # homogeneous background and immune
-    pp_obj = rmpoispp(c(lambda_nm, lambda_n), types = c("immune", "tumor"),
+    pp_obj = rmpoispp(c(lambda_nm, lambda_n), types = c("immune", "background"),
                       win = wm)
   }else if(type == "inhom"){
     # inhomogeneous background and inhomogeneous immune
-    pp_obj = rmpoispp(lams, types = c("immune", "tumor"),
+    pp_obj = rmpoispp(lams, types = c("immune", "background"),
                       win = wm)
 
   }else if(type == "homClust"){
     # homogeneous background, clustered immune
-    pp_obj_tumor = rpoispp(lambda_n, win = wm)
-    marks(pp_obj_tumor) = "tumor"
+    pp_obj_background = rpoispp(lambda_n, win = wm)
+    marks(pp_obj_background) = "background"
     pp_obj_clust = rMatClust(5, 0.05, lambda_nm / 5, win = wm)
     marks(pp_obj_clust) = "immune"
 
-    pp_df = bind_rows(as_tibble(pp_obj_tumor), as_tibble(pp_obj_clust)) %>%
+    pp_df = bind_rows(as_tibble(pp_obj_background), as_tibble(pp_obj_clust)) %>%
       mutate(marks = factor(marks))
 
     pp_obj = ppp(pp_df$x, pp_df$y,wm, marks = pp_df$marks)
@@ -51,11 +51,11 @@ mxsim_univariate <- function(lambda_n,
 
   }else if(type == "inhomClust"){
     # inhomogeneous background, clustered immune
-    pp_obj_tumor = rpoispp(lams[[2]], win = wm)
-    marks(pp_obj_tumor) = "tumor"
+    pp_obj_background = rpoispp(lams[[2]], win = wm)
+    marks(pp_obj_background) = "background"
     pp_obj_clust = rMatClust(5, 0.05, lambda_nm / 5, win = wm)
     marks(pp_obj_clust) = "immune"
-    pp_df = bind_rows(as_tibble(pp_obj_tumor), as_tibble(pp_obj_clust)) %>%
+    pp_df = bind_rows(as_tibble(pp_obj_background), as_tibble(pp_obj_clust)) %>%
       mutate(marks = factor(marks))
 
     pp_obj = ppp(pp_df$x, pp_df$y,wm, marks = pp_df$marks)
@@ -109,9 +109,9 @@ simulate_holes <- function(ppp_obj){
 }
 
 circle_window <- function(){
-  w <- owin(c(-2,2), c(-2,2), mask=matrix(TRUE, 100,100))
+  w <- owin(c(-1,1), c(-1,1), mask=matrix(TRUE, 100,100))
   X <- raster.x(w)
   Y <- raster.y(w)
-  wm <- owin(w$xrange, w$yrange, mask=(X^2 + Y^2 <= 4))
+  wm <- owin(w$xrange, w$yrange, mask=(X^2 + Y^2 <= 1))
   wm
 }

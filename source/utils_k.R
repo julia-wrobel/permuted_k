@@ -35,8 +35,6 @@ get_k = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
                     correction = c("trans"))
   time_fpermThin = toc()
 
-
-
   # calculate perm statistic
   kf = function(obj){
     kdf = Kcross(obj, i = "immune", j = "immune",
@@ -148,5 +146,11 @@ get_k_variance = function(ppp_obj, r = c(0, .05, .075,.1, .15, .2)){
 
 
 get_fperm_variance = function(){
+
+  m = length(id)
+  npts = npoints(X)
+  npairs =  npts * (npts - 1)
+  W = Window(X)
+  areaW = area(W)
 
 }
