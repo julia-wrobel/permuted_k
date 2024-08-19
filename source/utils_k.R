@@ -48,7 +48,7 @@ get_k = function(ppp_obj, rvec = c(0, .05, .075,.1, .15, .2), nperm = 10000){
   # calculate perm statistic
   kf = function(obj){
     kdf = Kcross(obj, i = "immune", j = "immune",
-           r = r,
+           r = rvec,
            correction = c("trans"))
 
     as_tibble(kdf) %>% filter(r %in% rvec) %>% select(r, trans)
