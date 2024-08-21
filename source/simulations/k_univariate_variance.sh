@@ -12,6 +12,6 @@ module load R
 # Rscript to run an r script
 # This stores which job is running (1, 2, 3, etc)
 JOBID=$SLURM_ARRAY_TASK_ID
-Rscript k_univariate_expectation.R $JOBID
+Rscript k_univariate_variance.R $JOBID
 
 
