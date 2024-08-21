@@ -36,7 +36,7 @@ source(here::here("source", "utils_k.R"))
 ###############################################################
 
 n = c(500, 2000, 5000)
-nm = c(50, 100, 500)
+m = c(50, 100, 500)
 type = c("hom", "inhom", "homClust", "inhomClust")
 
 seed_start = 1000
@@ -45,7 +45,7 @@ N_iter = 50
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
-                     nm = nm)
+                     m = m)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
@@ -69,7 +69,7 @@ if(doLocal) {
 ## set simulation design elements
 ###############################################################
 n = params$n[scenario]
-nm = params$nm[scenario]
+m = params$m[scenario]
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
 
@@ -85,12 +85,12 @@ for(iter in 1:N_iter){
   while(is.null(ppp_obj) && attempt <= 5) {
     attempt <- attempt + 1
     try(
-      ppp_obj <- mxsim_univariate(n, nm, type)
+      ppp_obj <- mxsim_univariate(n, m, type)
     )
   }
 
   par = c(iter, scenario, seed.iter, type, ppp_obj$full$n, subset(ppp_obj$full, marks == "immune")$n,
-          ppp_obj$holes$n, subset(ppp_obj$holes, marks == "immune")$n, n, nm)
+          ppp_obj$holes$n, subset(ppp_obj$holes, marks == "immune")$n, n, m)
 
   par = matrix(par, nrow = 1)
   ################################################################################
@@ -102,7 +102,7 @@ for(iter in 1:N_iter){
 
   results_mat = cbind(k_full, k_holes)
 
-  n1 = c("iter","scenario", "seed", "type", "n", "nm", "n_hole", "nm_hole", "lambda_n", "lambda_nm")
+  n1 = c("iter","scenario", "seed", "type", "n", "m", "n_hole", "m_hole", "lambda_n", "lambda_m")
   n2 = colnames(k_full)
   n3 = paste0(colnames(k_holes), "_hole")
 

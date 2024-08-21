@@ -94,28 +94,23 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   tic()
   k = Kcross(ppp_obj, i = "immune", j = "immune",
              r = rvec,
-             correction = c("trans"),
-             var.approx = TRUE)
-
-  # using envelope approach to get pvalue
-  simulated_k <- envelope(subset(ppp_obj, marks == "immune"), Kest, nsim = nperm,
-                          correction = c("trans"))
-
-  as_tibble(simulated_k) %>%
-    filter(r %in% rvec)
-    group_by(r) %>%
-    mutate()
-  pvalue <- sum(k$trans > simulated_k$obs) / nperm
-  variance_CSR <- k$var
+             correction = c("trans"))
   time_k = toc()
-
+  # Not using anything for hypothesis testing for K under theoretical CSR. Need to build this in later.
+  # get variance based on block bootstrap for use in confidence intervals
+  # not the same as the permutation variance, let' s
+  # I don't think this is right
+  #var_k = envelope(ppp_obj, fun = Kcross, i = "immune",
+   #        j = "immune", r = rvec, correction = c("trans"), global = FALSE,
+    #       nsim = 999, alternative = "greater")
 
   ################################################################################
   ################################################################################
   # calculate kepd statistic and variance
   tic()
   kepd = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj, variance = TRUE) %>%
-    select(r, var = kvpd, pvalue, expectation = kepd)
+    select(r, var = kvpd, pvalue, expectation = kepd) %>%
+    mutate(method = "kepd")
   time_kepd = toc()
 
 
@@ -125,7 +120,8 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   tic()
   ppp_obj_thin = rthin(ppp_obj, P = .5)
   kepdThin = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_thin, variance = TRUE) %>%
-    select(r, var = kvpd, pvalue, expectation = kepd)
+    select(r, var = kvpd, pvalue, expectation = kepd) %>%
+    mutate(method = "kepdThin")
   time_kepdThin = toc()
 
 
@@ -147,28 +143,25 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   kperm = map_dfr(perms, kf)
   kperm = kperm %>% group_by(r) %>% summarise(var = var(trans),
                                               pvalue = sum((khat-trans) >= 0)/nperm,
-                                              expectation = mean(trans)) %>% ungroup()
+                                              expectation = mean(trans)) %>% ungroup() %>%
+    mutate(method = "kperm")
   time_perm = toc()
+
+
+  times = c((time_kepd$toc - time_kepd$tic),
+            (time_kepdThin$toc - time_kepdThin$tic),
+            (time_perm$toc - time_perm$tic))
+
 
   ################################################################################
   ################################################################################
   # aggregate data
-  res = tibble(r = rvec,
-               ktheo = filter(as_tibble(k), r %in% rvec)$theo,
-               khat = filter(as_tibble(k),r %in% rvec)$trans,
-               kinhomhat = filter(as_tibble(kinhom), r %in% rvec)$trans,
-               kinhomtheo = filter(as_tibble(kinhom), r %in% rvec)$theo,
-               kepd = filter(as_tibble(kepd), r %in% rvec)$trans,
-               kperm = kperm$trans,
-               kepdThin = filter(as_tibble(kepd_thin), r %in% rvec)$trans,
-               time_kinhom = time_kinhom$toc - time_kinhom$tic,
-               time_k = time_k$toc - time_k$tic,
-               time_kepd = (time_kepd$toc - time_kepd$tic) + time_k,
-               time_kepdThin = (time_kepdThin$toc - time_kepdThin$tic) + time_k,
-               time_kperm = (time_perm$toc - time_perm$tic) + time_k)
+  res = bind_rows(kepd, kepdThin, kperm) %>%
+    mutate(khat = rep(k$trans, times = 3),
+           time = rep(times, each = length(rvec)))
 
+  return(res)
 
-  as.matrix(res)
 }
 
 
