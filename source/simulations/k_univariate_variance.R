@@ -3,7 +3,7 @@
 # August 2024
 #
 # This file produces simulations for univariate K under different data generation mechanisms
-# comparing fperm to CSR to Kinhom,
+# focusing on the variance/power. Runs 1000 iterations in chunks of 50 at a time.
 ####################################################################
 
 #suppressPackageStartupMessages()
@@ -44,11 +44,13 @@ type = c("hom", "inhom", "homClust", "inhomClust")
 
 seed_start = 1000
 N_iter = 1000
+maxiter = (seq(1, N_iter, by = 50)-1) + 50
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
-                     m = m)
+                     m = m,
+                     maxiter = (seq(1, N_iter, by = 50)-1) + 50)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
@@ -75,12 +77,14 @@ n = params$n[scenario]
 m = params$m[scenario]
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
-print(SEED.START)
+maxiter = params$maxiter[scenario]
 
-results = vector("list", length = N_iter)
-for(iter in 1:N_iter){
+iter_vec = (maxiter-49):maxiter
+
+results = vector("list", length = 50)
+for(i in 1:50){
   # set seed
-  seed.iter = (SEED.START - 1)*N_iter + iter
+  seed.iter = (SEED.START - 1)*N_iter + iter_vec[i]
   set.seed(seed.iter)
 
   # simulate data
@@ -102,7 +106,7 @@ for(iter in 1:N_iter){
 
   res = bind_rows(mutate(k_full, holes = FALSE, n = ppp_obj$full$n, m = subset(ppp_obj$full, marks == "immune")$n),
             mutate(k_holes, holes = TRUE, n = ppp_obj$holes$n, m = subset(ppp_obj$holes, marks == "immune")$n)) %>%
-    mutate(iter = iter,
+    mutate(iter = iter_vec[i],
            scenario = scenario,
            seed = seed.iter,
            type = type,
@@ -110,7 +114,7 @@ for(iter in 1:N_iter){
            lambda_m = m)
 
 
-  results[[iter]] = res
+  results[[i]] = res
 } # end for loop
 
 
