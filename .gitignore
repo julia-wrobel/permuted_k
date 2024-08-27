@@ -13,3 +13,5 @@ drafts/*_cache/
 .Ruserdata
 
 *DS_Store
+*err
+*out
