@@ -171,31 +171,12 @@ p_doc / p_times
 # Variance
 
 ```{r}
-files = list.files(here::here("output", "univariate_variance"),
-                   recursive = TRUE,
+files = list.files(here::here("output", "univariate_variance", "nperm1000"),
                    full.names =  TRUE)
 
 df = map_dfr(files, merge_files, variance = TRUE)
 ```
 
-
-Get parameter values for each scenario.
-
-```{r}
-n = c(500, 2000)
-m = c(50, 100, 500)
-type = c("hom", "inhom", "homClust", "inhomClust")
-
-seed_start = 1000
-N_iter = 1000
-maxiter = (seq(1, N_iter, by = 50)-1) + 50
-
-params = expand.grid(seed_start = seed_start,
-                     type = type,
-                     n = n,
-                     m = m,
-                     maxiter = (seq(1, N_iter, by = 50)-1) + 50)
-```
 
 
 
@@ -203,21 +184,13 @@ Data cleaning
 
 ```{r}
 df = df %>%
-  select(r, iter, type, scenario, method, time, pvalue) %>%
+  select(r, iter, type, scenario, contains("lambda"), method, time, pvalue) %>%
   mutate(method = factor(method, levels = c("kperm", "kepd", "kepdThin"),
-                         labels = c("perm", "epd", "epd thin"))) %>%
-  mutate(lambda_n = params[scenario,]$n,
-         lambda_m = params[scenario,]$m)
+                         labels = c("perm", "epd", "epd thin"))) 
   
 ```
 
 
-```{r}
-df %>%
-  ggplot(aes(pvalue, group = method, color = method)) +
-  geom_histogram() +
-  facet_wrap(~type)
-```
 
 
 
@@ -227,7 +200,7 @@ First look at scenarios with no true clustering. Calculating P(reject Ho|Ho True
 
 ```{r}
 df %>%
-  filter(type %in% c("inhom")) %>%
+  filter(type %in% c("hom", "inhom")) %>%
   group_by(type, method, lambda_n, lambda_m) %>%
   summarize(type1_error = sum(pvalue<= 0.05)/n()) %>%
   ungroup() %>%
@@ -235,8 +208,9 @@ df %>%
   ggplot(aes(lambda_m, type1_error, group = method,
              color = method)) +
   geom_point() +
+  geom_jitter(width = .1) +
   geom_hline(yintercept = 0.05, linetype = 2) +
-  facet_wrap(~ lambda_n)
+  facet_grid(type~ lambda_n)
 
 ```
 
@@ -246,7 +220,7 @@ Power = P(reject Ho|H1 True)
 
 ```{r}
 df %>%
-  filter(type %in% c("inhomClust")) %>%
+  filter(type %in% c("homClust", "inhomClust")) %>%
   group_by(type, method, lambda_n, lambda_m) %>%
   summarize(power = sum(pvalue<= 0.05)/n()) %>%
   ungroup() %>%
@@ -254,10 +228,34 @@ df %>%
   ggplot(aes(lambda_m, power, group = method,
              color = method)) +
   geom_point() +
-  geom_hline(yintercept = 0.05, linetype = 2) +
-  facet_wrap(~ lambda_n)
+  geom_jitter() +
+  facet_grid(type~ lambda_n)
 ```
 
 
 ## Computation time
+
+
+```{r}
+df %>%
+  filter(type == "inhomClust") %>%
+  group_by(lambda_m, lambda_n, method) %>%
+  summarize(time = median(time)) %>%
+  ungroup() %>%
+  mutate(lambda_m = factor(lambda_m),
+         lambda_n = factor(lambda_n,
+                           labels = c("lambda[n]: 500",
+                                      "lambda[n]: 2000"))) %>%
+  ggplot(aes(lambda_m, time, color = method, 
+             group = interaction(lambda_m, method))) +
+  theme_minimal() + 
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  geom_line(aes(group = method)) +
+  labs(x = expression(lambda[m]),
+       y = "median seconds") +
+  facet_wrap(~lambda_n, labeller = label_parsed)
+  
+```
+
 

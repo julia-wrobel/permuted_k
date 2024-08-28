@@ -90,6 +90,8 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
 
   ################################################################################
   ################################################################################
+  # https://www.esaim-ps.org/articles/ps/pdf/2013/01/ps120027.pdf
+  # paper for asymptotic pvalue for Ripley's K under homogeneity
   # estimate K using translation correction
   tic()
   k = Kcross(ppp_obj, i = "immune", j = "immune",

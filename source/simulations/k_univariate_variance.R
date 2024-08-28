@@ -40,12 +40,12 @@ source(here::here("source", "get_permutation_distribution.R"))
 ## set simulation design elements
 ###############################################################
 
-n = c(500, 2000)
+n = c(100, 500, 2000)
 m = c(50, 100, 500)
 type = c("hom", "inhom", "homClust", "inhomClust")
 
 seed_start = 1000
-N_iter = 1000
+N_iter = 10000
 maxiter = (seq(1, N_iter, by = 50)-1) + 50
 
 params = expand.grid(seed_start = seed_start,
@@ -120,7 +120,7 @@ for(i in 1:50){
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_variance", "nperm1000", Date), scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_variance", "nperm1000", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 
