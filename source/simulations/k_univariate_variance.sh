@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-7200%50
+#SBATCH --array=1-720%50
 #SBATCH --job-name=univariate_variance_job
 #SBATCH --mem=50G
 #SBATCH --partition=wrobel

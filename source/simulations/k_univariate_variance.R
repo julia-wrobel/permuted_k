@@ -46,13 +46,13 @@ type = c("hom", "inhom", "homClust", "inhomClust")
 
 seed_start = 1000
 N_iter = 10000
-maxiter = (seq(1, N_iter, by = 50)-1) + 50
+maxiter = (seq(1, N_iter, by = 500)-1) + 500
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
                      m = m,
-                     maxiter = (seq(1, N_iter, by = 50)-1) + 50)
+                     maxiter = (seq(1, N_iter, by = 500)-1) + 500)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
@@ -81,10 +81,10 @@ type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
 maxiter = params$maxiter[scenario]
 
-iter_vec = (maxiter-49):maxiter
+iter_vec = (maxiter-499):maxiter
 
-results = vector("list", length = 50)
-for(i in 1:50){
+results = vector("list", length = 500)
+for(i in 1:500){
   # set seed
   seed.iter = (SEED.START - 1)*N_iter + iter_vec[i]
   set.seed(seed.iter)
