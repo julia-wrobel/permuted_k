@@ -108,7 +108,7 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   ################################################################################
   # calculate kepd statistic and variance
   tic()
-  kepd = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj, variance = TRUE) %>%
+  kepd = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj) %>%
     select(r, var = kvpd, pvalue, expectation = kepd) %>%
     mutate(method = "kepd")
   time_kepd = toc()
@@ -119,7 +119,7 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   # calculate kepd statistic and variance on 50% thinned data
   tic()
   ppp_obj_thin = rthin(ppp_obj, P = .5)
-  kepdThin = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_thin, variance = TRUE) %>%
+  kepdThin = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_thin) %>%
     select(r, var = kvpd, pvalue, expectation = kepd) %>%
     mutate(method = "kepdThin")
   time_kepdThin = toc()
@@ -142,7 +142,7 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   perms = rlabel(ppp_obj, nsim = nperm)
   kperm = map_dfr(perms, kf)
   kperm = kperm %>% group_by(r) %>% summarise(var = var(trans),
-                                              pvalue = sum((khat-trans) >= 0)/nperm,
+                                              pvalue = sum(trans >= khat)/nperm,
                                               expectation = mean(trans)) %>% ungroup() %>%
     mutate(method = "kperm")
   time_perm = toc()

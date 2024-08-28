@@ -8,22 +8,24 @@
 
 #suppressPackageStartupMessages()
 
-library(spatstat.random)
-library(spatstat.geom)
-library(spatstat.explore)
-library(tibble)
-library(dplyr)
-library(purrr)
-library(tidyr)
-library(tictoc)
+suppressPackageStartupMessages(library(spatstat.random))
+suppressPackageStartupMessages(library(spatstat.geom))
+suppressPackageStartupMessages(library(spatstat.explore))
+suppressPackageStartupMessages(library(tibble))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(tictoc))
 
 
 wd = getwd()
 
 if(substring(wd, 2, 6) == "Users"){
   doLocal = TRUE
+  nperm = 10
 }else{
   doLocal = FALSE
+  nperm = 1000
 }
 
 
@@ -54,11 +56,11 @@ params = expand.grid(seed_start = seed_start,
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_variance"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_variance", "nperm1000"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 1
+  scenario = 4
   N_iter = 2
 }else{
   # defined from batch script params
@@ -100,25 +102,25 @@ for(i in 1:50){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k_full = get_k_power(ppp_obj$full)
-  k_holes = get_k_power(ppp_obj$holes)
+  k_full = get_k_power(ppp_obj$full, nperm = nperm)
+  #k_holes = get_k_power(ppp_obj$holes, nperm = nperm)
 
-
-  res = bind_rows(mutate(k_full, holes = FALSE, n = ppp_obj$full$n, m = subset(ppp_obj$full, marks == "immune")$n),
-            mutate(k_holes, holes = TRUE, n = ppp_obj$holes$n, m = subset(ppp_obj$holes, marks == "immune")$n)) %>%
+  lambda_n = n
+  lambda_m = m
+  res = mutate(k_full, holes = FALSE, n = ppp_obj$full$n, m = subset(ppp_obj$full, marks == "immune")$n) %>%
     mutate(iter = iter_vec[i],
            scenario = scenario,
            seed = seed.iter,
            type = type,
-           lambda_n = n,
-           lambda_m = m)
+           lambda_n = lambda_n,
+           lambda_m = lambda_m)
 
 
   results[[i]] = res
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_variance", Date), "/",scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_variance", "nperm1000", Date), scenario, ".RDA")
 save(results,
      file = filename)
 
