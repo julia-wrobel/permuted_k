@@ -212,6 +212,15 @@ df = df %>%
 ```
 
 
+```{r}
+df %>%
+  ggplot(aes(pvalue, group = method, color = method)) +
+  geom_histogram() +
+  facet_wrap(~type)
+```
+
+
+
 ## Power/Type I error
 
 First look at scenarios with no true clustering. Calculating P(reject Ho|Ho True)
@@ -233,10 +242,20 @@ df %>%
 
 
 
-Power
+Power = P(reject Ho|H1 True)
 
 ```{r}
-
+df %>%
+  filter(type %in% c("inhomClust")) %>%
+  group_by(type, method, lambda_n, lambda_m) %>%
+  summarize(power = sum(pvalue<= 0.05)/n()) %>%
+  ungroup() %>%
+  mutate(lambda_m = factor(lambda_m)) %>%
+  ggplot(aes(lambda_m, power, group = method,
+             color = method)) +
+  geom_point() +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  facet_wrap(~ lambda_n)
 ```
 
 
