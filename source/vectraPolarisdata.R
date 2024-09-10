@@ -9,7 +9,9 @@
 #suppressPackageStartupMessages()
 
 
+suppressPackageStartupMessages(library(spatstat.random))
 suppressPackageStartupMessages(library(spatstat.geom))
+suppressPackageStartupMessages(library(spatstat.explore))
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(tictoc))
 
