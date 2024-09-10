@@ -29,15 +29,6 @@ if(substring(wd, 2, 6) == "Users"){
 #source(here::here("source", "utils_k.R"))
 #source(here::here("source", "get_permutation_distribution.R"))
 
-###############################################################
-## set simulation design elements
-###############################################################
-
-params = expand.grid(seed_start = seed_start,
-                     type = type,
-                     n = n,
-                     m = m,
-                     maxiter = (seq(1, N_iter, by = 500)-1) + 500)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
