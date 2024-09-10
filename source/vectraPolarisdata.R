@@ -26,8 +26,8 @@ if(substring(wd, 2, 6) == "Users"){
 ###############################################################
 ## define or source functions used in code below
 ###############################################################
-#source(here::here("source", "utils_k.R"))
-#source(here::here("source", "get_permutation_distribution.R"))
+source(here::here("source", "utils_k.R"))
+source(here::here("source", "get_permutation_distribution.R"))
 
 
 ## record date for analysis; create directory for results
