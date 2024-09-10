@@ -4,12 +4,16 @@
 ## History
 .Rhistory
 
-## data directories and files
+
 data
+output
+
+output/*RDA
+output/*Rdata
+output/univariate_variance/nperm1000/*
+
 analysis/*_cache/
 drafts/*_cache/
-*.RData
-*RDA
 .Ruserdata
 
 *DS_Store
