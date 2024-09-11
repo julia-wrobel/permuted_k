@@ -1,6 +1,7 @@
 #!/bin/bash
-#SBATCH --array=1-128%50
+#SBATCH --array=1-128%10
 #SBATCH --job-name=vpData_job
+#SBATCH --mem=60G
 #SBATCH --partition=wrobel
 #SBATCH --output=vpData.out
 #SBATCH --error=vpData.err
