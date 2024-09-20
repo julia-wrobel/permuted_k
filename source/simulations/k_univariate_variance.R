@@ -119,7 +119,7 @@ for(i in 1:50){
            seed = seed.iter,
            type = type,
            lambda_n = lambda_n,
-           p_rate = p)
+           abundance = abundance)
 
 
   results[[i]] = res
