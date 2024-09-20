@@ -40,27 +40,29 @@ source(here::here("source", "get_permutation_distribution.R"))
 ## set simulation design elements
 ###############################################################
 
-n = c(100, 500, 2000)
-m = c(50, 100, 500)
-type = c("hom", "inhom", "homClust", "inhomClust")
+n = c(100, 500, 2000, 5000)
+abundance = c(0.001, 0.01, 0.1, 0.5, 0.75)
+type = c("hom", "inhom", "homClust", "inhomClust", "inhomTightClust")
 
 seed_start = 1000
-N_iter = 10000
-maxiter = (seq(1, N_iter, by = 500)-1) + 500
+N_iter = 1000
+maxiter = (seq(1, N_iter, by = 50)-1) + 50
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
-                     m = m,
-                     maxiter = (seq(1, N_iter, by = 500)-1) + 500)
+                     abundance = abundance,
+                     maxiter = (seq(1, N_iter, by = 50)-1) + 50) %>%
+  mutate(m = n * abundance) %>%
+  filter(m >=5)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_variance", "nperm1000"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_variance", "varyAbundance"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 4
+  scenario = 5
   N_iter = 2
 }else{
   # defined from batch script params
@@ -76,15 +78,19 @@ if(doLocal) {
 ## set simulation design elements
 ###############################################################
 n = params$n[scenario]
-m = params$m[scenario]
+abundance = params$abundance[scenario]
+m = n * abundance
+
+
+
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
 maxiter = params$maxiter[scenario]
 
-iter_vec = (maxiter-499):maxiter
+iter_vec = (maxiter-49):maxiter
 
-results = vector("list", length = 500)
-for(i in 1:500){
+results = vector("list", length = 50)
+for(i in 1:50){
   # set seed
   seed.iter = (SEED.START - 1)*N_iter + iter_vec[i]
   set.seed(seed.iter)
@@ -113,14 +119,14 @@ for(i in 1:500){
            seed = seed.iter,
            type = type,
            lambda_n = lambda_n,
-           lambda_m = lambda_m)
+           p_rate = p)
 
 
   results[[i]] = res
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_variance", "nperm1000", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_variance", "varyAbundance", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 

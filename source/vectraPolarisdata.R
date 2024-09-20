@@ -84,13 +84,13 @@ if(doLocal) {
     mutate(immune = ifelse(phenotype_cd19 == "CD19+" | phenotype_cd8 == "CD8+" |
                              phenotype_cd3 == "CD3+" | phenotype_cd68 == "CD68+", "immune", "background"),
            immune = factor(immune, levels = c("immune", "background"))) %>%
-    select(cell_id, sample_id, x, y, immune, tissue_category)
+    select(cell_id, sample_id, x, y, immune, tissue_category, everything())
 
   rm(spe_ovarian, assays_slot, intensities_df, nucleus_intensities_df, membrane_intensities_df, colData_df, spatialCoords_df)
 
 
   # save processed data
-  save(ovarian, file = here::here("data", "processed_ovarian_data.Rda"))
+  save(ovarian, patient_level_ovarian, file = here::here("data", "processed_ovarian_data.Rda"))
 
   ovarian = ovarian %>% filter(tissue_category == "Tumor")
 

@@ -1,20 +1,20 @@
 # define function for simulating univariate mIF data. Returns object with and without holes
 ## lambda_n: intensity for background cells
-## lambda_nm: intensity for marker positive cells
+## lambda_m: intensity for marker positive cells
 ## holes: should an image be simulated with or without holes
 ## type: defines the distribution of the point process- homogeneous, inhomogeneous, or clustered
 mxsim_univariate <- function(lambda_n,
-                             lambda_nm, # needs to be divisible by 5
+                             lambda_m, # needs to be divisible by 5
                              type = c("hom", "inhom", "homClust", "inhomClust")){
 
 
 
   wm <- circle_window()
 
-  if(type %in% c("inhom", "inhomClust")){
+  if(type %in% c("inhom", "inhomClust", "inhomTightClust")){
     lams <- list(function(x,y){
-      #lambda_nm*exp(-.6*x^2 + 0.5*y)
-      lambda_nm*x^2
+      #lambda_m*exp(-.6*x^2 + 0.5*y)
+      lambda_m*x^2
     }
     # log quadratic trend
     ,
@@ -29,7 +29,7 @@ mxsim_univariate <- function(lambda_n,
 
   if(type == "hom"){
     # homogeneous background and immune
-    pp_obj = rmpoispp(c(lambda_nm, lambda_n), types = c("immune", "background"),
+    pp_obj = rmpoispp(c(lambda_m, lambda_n), types = c("immune", "background"),
                       win = wm)
   }else if(type == "inhom"){
     # inhomogeneous background and inhomogeneous immune
@@ -40,7 +40,8 @@ mxsim_univariate <- function(lambda_n,
     # homogeneous background, clustered immune
     pp_obj_background = rpoispp(lambda_n, win = wm)
     marks(pp_obj_background) = "background"
-    pp_obj_clust = rMatClust(5, 0.05, lambda_nm / 5, win = wm)
+    pp_obj_clust = rMatClust(5, 0.05, lambda_m / 5, win = wm)
+    pp_obj_clust = rMatClust(3, 0.3, lambda_m / 3, win = wm)
     marks(pp_obj_clust) = "immune"
 
     pp_df = bind_rows(as_tibble(pp_obj_background), as_tibble(pp_obj_clust)) %>%
@@ -53,13 +54,24 @@ mxsim_univariate <- function(lambda_n,
     # inhomogeneous background, clustered immune
     pp_obj_background = rpoispp(lams[[2]], win = wm)
     marks(pp_obj_background) = "background"
-    pp_obj_clust = rMatClust(5, 0.05, lambda_nm / 5, win = wm)
+    pp_obj_clust = rMatClust(5, 0.05, lambda_m / 5, win = wm)
     marks(pp_obj_clust) = "immune"
     pp_df = bind_rows(as_tibble(pp_obj_background), as_tibble(pp_obj_clust)) %>%
       mutate(marks = factor(marks))
 
     pp_obj = ppp(pp_df$x, pp_df$y,wm, marks = pp_df$marks)
-  }
+  }else if(type == "inhomTightClust"){
+    # inhomogeneous background, clustered immune
+    pp_obj_background = rpoispp(lams[[2]], win = wm)
+    marks(pp_obj_background) = "background"
+    pp_obj_clust = rMatClust(3, 0.3, lambda_m / 3, win = wm)
+    marks(pp_obj_clust) = "immune"
+    pp_df = bind_rows(as_tibble(pp_obj_background), as_tibble(pp_obj_clust)) %>%
+      mutate(marks = factor(marks))
+
+    pp_obj = ppp(pp_df$x, pp_df$y,wm, marks = pp_df$marks)
+ }
+
 
 
   # define holes here

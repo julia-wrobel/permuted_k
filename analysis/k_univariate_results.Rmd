@@ -172,7 +172,7 @@ p_doc / p_times
 
 ```{r}
 files = list.files(here::here("output", "univariate_variance", "nperm1000"),
-                   full.names =  TRUE)
+                   full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
 
 df = map_dfr(files, merge_files, variance = TRUE)
 ```
@@ -186,7 +186,7 @@ Data cleaning
 df = df %>%
   select(r, iter, type, scenario, contains("lambda"), method, time, pvalue) %>%
   mutate(method = factor(method, levels = c("kperm", "kepd", "kepdThin"),
-                         labels = c("perm", "epd", "epd thin"))) 
+                         labels = c("perm", "KAMP", "KAMP lite"))) 
   
 ```
 
@@ -232,30 +232,5 @@ df %>%
   facet_grid(type~ lambda_n)
 ```
 
-
-## Computation time
-
-
-```{r}
-df %>%
-  filter(type == "inhomClust") %>%
-  group_by(lambda_m, lambda_n, method) %>%
-  summarize(time = median(time)) %>%
-  ungroup() %>%
-  mutate(lambda_m = factor(lambda_m),
-         lambda_n = factor(lambda_n,
-                           labels = c("lambda[n]: 500",
-                                      "lambda[n]: 2000"))) %>%
-  ggplot(aes(lambda_m, time, color = method, 
-             group = interaction(lambda_m, method))) +
-  theme_minimal() + 
-  theme(legend.position = "top",
-        legend.title = element_blank()) +
-  geom_line(aes(group = method)) +
-  labs(x = expression(lambda[m]),
-       y = "median seconds") +
-  facet_wrap(~lambda_n, labeller = label_parsed)
-  
-```
 
 

@@ -1,0 +1,362 @@
+---
+title: "Analysis of VectraPolarisData"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(survival)
+library(patchwork)
+library(broom)
+library(viridis)
+library(RESI)
+library(latex2exp)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Load data
+
+Using ovarian cancer data from [VectraPolarisData](https://www.bioconductor.org/packages/release/data/experiment/html/VectraPolarisData.html) package. Data cleaning process shown in `source/vectraPolarisdata.R`.
+
+```{r}
+load(here::here("data", "processed_ovarian_data.Rda"))
+```
+
+
+# Process data analysis results
+
+
+Source file for consolidating analyses
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+```{r}
+files = list.files(here::here("output", "vpData"))
+
+# call merge_files_vectraPolaris() defined in utils.R
+df = map_dfr(files, merge_files_vectraPolaris)
+
+# make comp times dataset
+times_df = df %>%
+  select(sample_id, time_k, time_kepd, time_kepdThin, time_kperm) %>%
+  distinct() %>%
+  pivot_longer(time_k:time_kperm, 
+               names_to = "method", values_to = "time",
+               names_prefix = "time_") %>%
+  mutate(method = factor(method, levels = c("k","kperm", "kepd", "kepdThin"),
+                         labels = c("k", "perm", "epd", "epd thin")))
+  
+
+# make degree of clustering dataset for use in survival analysis
+doc_df = df %>%
+  filter(r > 5) %>%
+  select(sample_id, r, ktheo, khat, kepd, kepdThin, kperm) %>%
+  #filter(round(r) %in% c(50, 100, 125, 150)) %>%
+  mutate(k = khat - ktheo,
+         perm = khat - kperm,
+         epd = khat - kepd,
+         epdThin = khat - kepdThin,
+          r = round(r)) %>%
+  select(sample_id, r, k, epd) 
+
+
+
+# get pvalues 
+dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE)
+
+#dfp = dfp %>%
+ # filter(r > 49.5, r < 51)
+```
+
+
+* Look at curves with my correction and with other correction
+* Look at speed of calculating expected value for mine and permutation
+* Look at p-values
+
+# Analysis
+
+## Survival analysis
+
+Do across radii. Computing RESI is computationally slow.
+
+```{r}
+# calculate abundance of immune cells
+p_immune = ovarian %>% 
+  filter(tissue_category == "Tumor") %>%
+  group_by(sample_id) %>%
+  summarize(n = n(),
+            m = sum(immune == "immune"),
+            p_immune = m/n) %>%
+  ungroup() 
+
+
+# use K but also control for age, stage, and abundance
+clinical = patient_level_ovarian %>%
+  select(sample_id,  age = age_at_diagnosis, stage = stage_bin,
+         survival_time, event = death, primary) %>%
+  filter(sample_id %in% unique(doc_df$sample_id)) %>%
+  distinct() %>%
+  left_join(p_immune) %>%
+  left_join(doc_df) %>%
+  filter(primary == 1)
+
+
+
+
+get_coxph = function(dat, rval, epd = TRUE){
+  dat = filter(dat, r == rval)
+  
+  if(epd){
+      mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + epd, 
+              data = dat)
+  }else{
+      mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
+              data = dat)
+  }
+  
+  resi_object = resi(mod, data = dat)
+  
+  
+  tidy(mod, exp = TRUE) %>%
+    mutate(r = rval, epd = epd, 
+           resi = coef(resi_object)$RESI,
+           lower = coef(resi_object)$"2.5%",
+           upper = coef(resi_object)$"97.5%")
+}
+
+
+
+
+filename = here::here("output",
+                      "VPdata_coxPH_results.RData")
+
+if(file.exists(filename)){
+	load(filename)
+}else{
+  cph = bind_rows(map_dfr(unique(clinical$r), get_coxph, dat = clinical), 
+                map_dfr(unique(clinical$r), get_coxph, dat = clinical, FALSE))
+  
+  save(cph, file = filename)
+}
+
+
+```
+
+
+```{r}
+cph %>%
+  mutate(term = ifelse(term %in% c("k", "epd"), "fundiff", term)) %>%
+  filter(term == "fundiff") %>%
+  ggplot(aes(r, log(p.value), group = epd, color = epd)) +
+  geom_hline(yintercept = log(0.05), linetype = 2) +
+  geom_point()
+
+```
+
+
+
+```{r}
+cph %>%
+  mutate(term = ifelse(term %in% c("k", "epd"), "fundiff", term)) %>%
+  filter(term == "fundiff") %>%
+  ggplot(aes(r, resi, group = epd, color = epd)) +
+  geom_point()
+```
+
+
+
+
+
+```{r}
+clinical %>%
+  as_tibble() %>%
+  filter(r == 5) %>%
+  select(sample_id, n,m,p_immune) %>%
+  pivot_longer(n:p_immune, names_to = "stat", values_to = "value") %>%
+  group_by(stat) %>%
+  summarize(median = median(value),
+            q25 = quantile(value, .25),
+            q75 = quantile(value, .75)) %>%
+  ungroup()
+
+```
+
+
+# Computation times
+
+Computation times for expectation. 
+
+```{r}
+times_df %>%
+  group_by(method) %>%
+  summarize(median = median(time),
+            max_seconds = max(time),
+            "total (minutes)" = sum(time)/60) %>%
+  ungroup() %>%
+  arrange(median) %>%
+  rename("median (seconds)" = median) %>%
+  knitr::kable(digits = 1)
+```
+
+
+```{r}
+times_df %>%
+  #mutate(time = time/60) %>%
+  filter(method != "k") %>%
+  ggplot(aes(method, log(time), color = method, 
+             group = method)) +
+  geom_boxplot() +
+  theme_minimal() + 
+  coord_flip() +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  labs(x = expression(lambda[m]),
+       y = "log seconds") 
+  
+```
+
+
+# Summary statistics
+
+## Pvalues
+
+```{r}
+dfp %>%
+  filter(sample_id %in% clinical$sample_id, r > 1) %>%
+  select(sample_id, r, method, pvalue) %>% distinct() %>%
+  group_by(r, method) %>%
+  summarize(percent_sig_clustering = sum(pvalue<0.05)/n()) %>%
+  ungroup() %>%
+  filter(!is.na(percent_sig_clustering)) %>%
+  ggplot(aes(r, percent_sig_clustering, group = method, color = method)) +
+  geom_line()
+```
+
+
+# Figures
+
+
+## Figure 1
+
+This uses example data from the VectraPolarisData package. First data is loaded (contains three images).
+Three ovarian images with K function and CSR.
+
+Create code for plotting
+
+
+```{r}
+plot_k = function(idnum){
+  dat = ovarian %>%
+  filter(sample_id == idnum)
+
+  dat_tumor = ovarian %>%
+    filter(sample_id == idnum, tissue_category == "Tumor")
+   
+  p1 = dat %>%
+    ggplot(aes(x, y)) +
+    geom_point(size = 0.3, alpha = .5, color = "gray") +
+    geom_point(data = filter(dat, immune == "immune"), 
+               size = 0.3, color = "darkred", alpha = .5) +
+    geom_point(data = dat_tumor, size = 0.5, alpha = .8, color = "gray") +
+    geom_point(data = filter(dat_tumor, immune == "immune"), 
+               size = 0.5, color = "darkred") +
+    labs(x = "x position", y = "y position") +
+    theme(axis.text = element_blank(), legend.position = "none") 
+  
+
+  p2 =   df %>%
+    select(sample_id, r, k = khat, theo = ktheo, epd = kepd) %>%
+    pivot_longer(k:epd, names_to = "K", values_to = "value") %>%
+    filter(sample_id == idnum, K != "epd", r <=150) %>%
+    mutate(K = factor(K, levels = c("k", "theo"))) %>%
+    ggplot(aes(r, value, group = K, color = K)) +
+    geom_line() +
+    scale_colour_manual(values = c("darkred", "blue"),
+                        labels = c(k = TeX("$\\hat{K}(r)$"),
+                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+    labs(y = TeX("K(r)")) +
+    theme(legend.position = c(.25,.7),
+          legend.title=element_blank())
+
+  
+  
+  p3 = df %>%
+    select(sample_id, r, k = khat, theo = ktheo, epd = kepd) %>%
+    pivot_longer(k:epd, names_to = "K", values_to = "value") %>%
+    filter(sample_id == idnum, r <=150) %>%
+    mutate(K = factor(K, levels = c("k", "epd", "theo"))) %>%
+    ggplot(aes(r, value, group = K, color = K)) +
+    geom_line() +
+    scale_colour_manual(values = c("darkred", "purple", "blue"),
+                        labels = c(k = TeX("$\\hat{K}(r)$"),
+                                   epd = TeX("$CSR_{epd}$"),
+                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+    labs(y = TeX("K(r)")) +
+    theme(legend.position = c(.25,.7),
+          legend.title=element_blank())
+
+  
+  list(p1, p2, p3)
+  
+}
+```
+
+
+
+Generate plots: before expected value statistic
+
+
+
+```{r fig_3subjs, fig.height = 6}
+high_k = "030120 P9HuP6 TMA 1-B_Core[1,7,E]_[14474,48365].im3"
+low_k = "030120 P9HuP6 TMA 1-A_Core[1,6,C]_[10353,49826].im3"
+patchy_k = "030120 P9HuP6 TMA 1-A_Core[1,1,C]_[10162,38841].im3"
+
+
+high = plot_k(high_k)
+low = plot_k(low_k)
+patchy = plot_k(patchy_k)
+
+
+(high[[1]] + low[[1]] + patchy[[1]]) / (high[[2]] + low[[2]] + patchy[[2]])
+
+```
+
+
+
+
+## Figure 5
+
+
+Same as Figure 1, but including EPD CSR value
+
+```{r fig_3subjs_epd, fig.height = 6}
+
+
+(high[[1]] + low[[1]] + patchy[[1]]) / (high[[3]] + low[[3]] + patchy[[3]])
+
+```
+
+
+
