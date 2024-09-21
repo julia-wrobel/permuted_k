@@ -171,7 +171,14 @@ p_doc / p_times
 # Variance
 
 ```{r}
-files = list.files(here::here("output", "univariate_variance", "nperm1000"),
+#files = list.files(here::here("output", "univariate_variance", "nperm1000"),
+ #                  full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
+
+#df = map_dfr(files, merge_files, variance = TRUE)
+```
+
+```{r}
+files = list.files(here::here("output", "univariate_variance", "varyAbundance"),
                    full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
 
 df = map_dfr(files, merge_files, variance = TRUE)
@@ -179,12 +186,11 @@ df = map_dfr(files, merge_files, variance = TRUE)
 
 
 
-
 Data cleaning
 
 ```{r}
 df = df %>%
-  select(r, iter, type, scenario, contains("lambda"), method, time, pvalue) %>%
+  select(r, iter, type, scenario, contains("lambda"), abundance, method, time, pvalue) %>%
   mutate(method = factor(method, levels = c("kperm", "kepd", "kepdThin"),
                          labels = c("perm", "KAMP", "KAMP lite"))) 
   
@@ -201,11 +207,11 @@ First look at scenarios with no true clustering. Calculating P(reject Ho|Ho True
 ```{r}
 df %>%
   filter(type %in% c("hom", "inhom")) %>%
-  group_by(type, method, lambda_n, lambda_m) %>%
+  group_by(type, method, lambda_n, abundance) %>%
   summarize(type1_error = sum(pvalue<= 0.05)/n()) %>%
   ungroup() %>%
-  mutate(lambda_m = factor(lambda_m)) %>%
-  ggplot(aes(lambda_m, type1_error, group = method,
+  mutate(abundance = factor(abundance)) %>%
+  ggplot(aes(abundance, type1_error, group = method,
              color = method)) +
   geom_point() +
   geom_jitter(width = .1) +
@@ -213,6 +219,29 @@ df %>%
   facet_grid(type~ lambda_n)
 
 ```
+
+
+
+```{r}
+df %>%
+  filter(type %in% c("hom", "inhom")) %>%
+  group_by(type, method, lambda_n, abundance) %>%
+  summarize(type1_error = sum(pvalue<= 0.05)/n()) %>%
+  ungroup() %>%
+  mutate(lambda_n = factor(lambda_n)) %>%
+  ggplot(aes(lambda_n, type1_error, group = method,
+             color = method, linetype = method)) +
+  geom_point() +
+  geom_line() +
+  #ylim(0.045, 0.065) +
+  #theme(legend.position = "none") +
+  labs(y = "Type 1 error", x = "", title = "Type 1 error") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  facet_wrap(type~abundance, ncol = 5)
+
+```
+
+
 
 
 
@@ -230,6 +259,21 @@ df %>%
   geom_point() +
   geom_jitter() +
   facet_grid(type~ lambda_n)
+
+
+df %>%
+    filter(type %in% c("homClust", "inhomClust", "inhomTightClust")) %>%
+  group_by(type, method, lambda_n, abundance) %>%
+  summarize(power = sum(pvalue<= 0.05)/n()) %>%
+  ungroup() %>%
+  mutate(lambda_n = factor(lambda_n)) %>%
+  ggplot(aes(lambda_n, power, group = method,
+             color = method, linetype = method)) +
+  geom_point() +
+  geom_line() +
+  labs(y = "Power", x = "", title = "Power") +
+  geom_hline(yintercept = 0.95, linetype = 2) +
+  facet_wrap(type~abundance, ncol = 5)
 ```
 
 

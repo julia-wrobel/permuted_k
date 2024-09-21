@@ -171,3 +171,69 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
 
 
 
+## this function is for getting the variance and hypothesis test for each statistic
+## Not gonna do Kinhom here.
+get_k_power_permOnly = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
+
+  ################################################################################
+  ################################################################################
+  # https://www.esaim-ps.org/articles/ps/pdf/2013/01/ps120027.pdf
+  # paper for asymptotic pvalue for Ripley's K under homogeneity
+  # estimate K using translation correction
+  tic()
+  k = Kcross(ppp_obj, i = "immune", j = "immune",
+             r = rvec,
+             correction = c("trans"))
+  time_k = toc()
+  # Not using anything for hypothesis testing for K under theoretical CSR. Need to build this in later.
+  # get variance based on block bootstrap for use in confidence intervals
+  # not the same as the permutation variance, let' s
+  # I don't think this is right
+  #var_k = envelope(ppp_obj, fun = Kcross, i = "immune",
+  #        j = "immune", r = rvec, correction = c("trans"), global = FALSE,
+  #       nsim = 999, alternative = "greater")
+
+
+
+  ################################################################################
+  ################################################################################
+  # calculate perm statistic
+  kf = function(obj){
+    kdf = Kcross(obj, i = "immune", j = "immune",
+                 r = rvec,
+                 correction = c("trans"))
+
+    as_tibble(kdf) %>% filter(r %in% rvec) %>% select(r, trans) %>%
+      mutate(khat = k$trans)
+  }
+
+
+  tic()
+  perms = rlabel(ppp_obj, nsim = nperm)
+  kperm = map_dfr(perms, kf)
+  kperm = kperm %>% group_by(r) %>% summarise(var = var(trans),
+                                              pvalue = sum(trans >= khat)/nperm,
+                                              expectation = mean(trans)) %>% ungroup() %>%
+    mutate(method = "kperm")
+  time_perm = toc()
+
+
+  times = c((time_perm$toc - time_perm$tic))
+
+
+  ################################################################################
+  ################################################################################
+  # aggregate data
+  res = kperm %>%
+    mutate(khat = rep(k$trans, times = 1),
+           time = rep(times, each = length(rvec)))
+
+  return(res)
+
+}
+
+
+
+
+
+
