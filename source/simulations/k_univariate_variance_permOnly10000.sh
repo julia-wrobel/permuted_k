@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-1000%40
+#SBATCH --array=1-880%40
 #SBATCH --job-name=var_perm_job
 #SBATCH --mem=50G
 #SBATCH --partition=encore

@@ -204,43 +204,30 @@ df = df %>%
 
 First look at scenarios with no true clustering. Calculating P(reject Ho|Ho True)
 
-```{r}
-df %>%
-  filter(type %in% c("hom", "inhom")) %>%
-  group_by(type, method, lambda_n, abundance) %>%
-  summarize(type1_error = sum(pvalue<= 0.05)/n()) %>%
-  ungroup() %>%
-  mutate(abundance = factor(abundance)) %>%
-  ggplot(aes(abundance, type1_error, group = method,
-             color = method)) +
-  geom_point() +
-  geom_jitter(width = .1) +
-  geom_hline(yintercept = 0.05, linetype = 2) +
-  facet_grid(type~ lambda_n)
-
-```
-
 
 
 ```{r}
 df %>%
-  filter(type %in% c("hom", "inhom")) %>%
+  filter(type %in% c("hom", "inhom"),
+         abundance > 0.001,
+         abundance < .75
+         ) %>%
   group_by(type, method, lambda_n, abundance) %>%
-  summarize(type1_error = sum(pvalue<= 0.05)/n()) %>%
+  summarize(type1_error = sum(pvalue<= 0.05)/n(),
+            n_sim = n()) %>%
   ungroup() %>%
-  mutate(lambda_n = factor(lambda_n)) %>%
+  filter(n_sim >= 700) %>%
+  mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, type1_error, group = method,
              color = method, linetype = method)) +
   geom_point() +
   geom_line() +
-  #ylim(0.045, 0.065) +
-  #theme(legend.position = "none") +
   labs(y = "Type 1 error", x = "", title = "Type 1 error") +
   geom_hline(yintercept = 0.05, linetype = 2) +
-  facet_wrap(type~abundance, ncol = 5)
+  facet_wrap(abundance~type, ncol = 2, scales = "free")
 
 ```
-
 
 
 
@@ -249,31 +236,22 @@ Power = P(reject Ho|H1 True)
 
 ```{r}
 df %>%
-  filter(type %in% c("homClust", "inhomClust")) %>%
-  group_by(type, method, lambda_n, lambda_m) %>%
-  summarize(power = sum(pvalue<= 0.05)/n()) %>%
-  ungroup() %>%
-  mutate(lambda_m = factor(lambda_m)) %>%
-  ggplot(aes(lambda_m, power, group = method,
-             color = method)) +
-  geom_point() +
-  geom_jitter() +
-  facet_grid(type~ lambda_n)
-
-
-df %>%
-    filter(type %in% c("homClust", "inhomClust", "inhomTightClust")) %>%
+    filter(type %in% c("homClust", "inhomTightClust"),
+           abundance > 0.001,
+          #abundance < .75
+          ) %>%
   group_by(type, method, lambda_n, abundance) %>%
   summarize(power = sum(pvalue<= 0.05)/n()) %>%
   ungroup() %>%
-  mutate(lambda_n = factor(lambda_n)) %>%
+    mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, power, group = method,
              color = method, linetype = method)) +
   geom_point() +
   geom_line() +
   labs(y = "Power", x = "", title = "Power") +
-  geom_hline(yintercept = 0.95, linetype = 2) +
-  facet_wrap(type~abundance, ncol = 5)
+  geom_hline(yintercept = 0.90, linetype = 2) +
+  facet_wrap(type~abundance, nrow = 2, scales = "free")
 ```
 
 

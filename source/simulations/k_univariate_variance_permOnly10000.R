@@ -22,10 +22,10 @@ wd = getwd()
 
 if(substring(wd, 2, 6) == "Users"){
   doLocal = TRUE
-  nperm = 10
+  nperm = 100
 }else{
   doLocal = FALSE
-  nperm = 10000
+  nperm = 100
 }
 
 
@@ -41,8 +41,8 @@ source(here::here("source", "get_permutation_distribution.R"))
 ###############################################################
 
 n = c(100, 500, 2000, 5000)
-abundance = c(0.001, 0.01, 0.1, 0.5, 0.75)
-type = c("hom", "inhom", "homClust", "inhomClust", "inhomTightClust")
+abundance = c(0.01, 0.1, 0.5)
+type = c("hom", "inhom", "homClust", "inhomTightClust")
 
 seed_start = 1000
 N_iter = 1000
@@ -58,7 +58,7 @@ params = expand.grid(seed_start = seed_start,
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_variance", "varyAbundance_perm10000"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_variance", "varyAbundance_perm100"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
@@ -126,7 +126,7 @@ for(i in 1:50){
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_variance", "varyAbundance_perm10000", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_variance", "varyAbundance_perm100", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 
