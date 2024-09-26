@@ -1,0 +1,145 @@
+---
+title: "simulation results"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+# Overview
+
+This file loads data objects stored from simulations and produces figures for the paper. Libraries and code are sourced below. 
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(viridis)
+library(spatstat.random)
+library(patchwork)
+library(ggbreak)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Source code
+
+Source file for consolidating simulations
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+# Variance
+
+```{r}
+files = list.files(here::here("output", "univariate_variance", "varyAbundance"),
+                   full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
+
+df = map_dfr(files, merge_files, variance = TRUE) %>%
+  mutate(method = ifelse(method == "kperm", "perm1k", method))
+
+
+# get files for 10000 perms
+files = list.files(here::here("output", "univariate_variance", "varyAbundance_perm10000"),
+                   full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
+
+
+df_perm10k = map_dfr(files, merge_files, variance = TRUE) %>%
+  mutate(method = ifelse(method == "kperm", "perm10k", method))
+
+
+# get files for 100 perms
+files = list.files(here::here("output", "univariate_variance", "varyAbundance_perm100"),
+                   full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
+
+df_perm100 = map_dfr(files, merge_files, variance = TRUE) %>%
+  mutate(method = ifelse(method == "kperm", "perm100", method))
+
+df = bind_rows(df, df_perm10k, df_perm100)
+```
+
+
+
+Data cleaning
+
+```{r}
+df = df %>%
+  select(r, iter, type, scenario, contains("lambda"), abundance, method, time, pvalue) %>%
+  mutate(method = factor(method, levels = c("perm100", "perm1k", "perm10k", "kepd", "kepdThin"),
+                         labels = c("perm100", "perm1k", "perm10k", "KAMP", "KAMP lite"))) 
+  
+```
+
+
+
+
+
+## Power/Type I error
+
+First look at scenarios with no true clustering. Calculating P(reject Ho|Ho True)
+
+
+
+```{r}
+df %>%
+  filter(type %in% c("hom", "inhom"),
+         abundance > 0.001,
+         abundance < .75
+         ) %>%
+  group_by(type, method, lambda_n, abundance) %>%
+  summarize(type1_error = sum(pvalue<= 0.05)/n(),
+            n_sim = n()) %>%
+  ungroup() %>%
+  #filter(n_sim >= 700) %>%
+  mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n)) %>%
+  ggplot(aes(lambda_n, type1_error, group = method,
+             color = method)) +
+  geom_point() +
+  geom_line() +
+  labs(y = "Type 1 error", x = "", title = "Type 1 error") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  facet_wrap(abundance~type, ncol = 2, scales = "free")
+
+```
+
+
+
+
+Power = P(reject Ho|H1 True)
+
+```{r}
+df %>%
+    filter(type %in% c("homClust", "inhomTightClust"),
+           abundance > 0.001,
+          #abundance < .75
+          ) %>%
+  group_by(type, method, lambda_n, abundance) %>%
+  summarize(power = sum(pvalue<= 0.05)/n()) %>%
+  ungroup() %>%
+    mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n)) %>%
+  ggplot(aes(lambda_n, power, group = method,
+             color = method, linetype = method)) +
+  geom_point() +
+  geom_line() +
+  labs(y = "Power", x = "", title = "Power") +
+  geom_hline(yintercept = 0.90, linetype = 2) +
+  facet_wrap(type~abundance, nrow = 2, scales = "free")
+```
+
+
+
