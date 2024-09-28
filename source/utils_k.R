@@ -86,7 +86,7 @@ get_k = function(ppp_obj, rvec = c(0, .05, .075,.1, .15, .2), nperm = 10000){
 
 ## this function is for getting the variance and hypothesis test for each statistic
 ## Not gonna do Kinhom here.
-get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
+get_k_power = function(ppp_obj, rvec = c(0, .15)){
 
   ################################################################################
   ################################################################################
@@ -127,39 +127,15 @@ get_k_power = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
   time_kepdThin = toc()
 
 
-  ################################################################################
-  ################################################################################
-  # calculate perm statistic
-  kf = function(obj){
-    kdf = Kcross(obj, i = "immune", j = "immune",
-                 r = rvec,
-                 correction = c("trans"))
-
-    as_tibble(kdf) %>% filter(r %in% rvec) %>% select(r, trans) %>%
-      mutate(khat = k$trans)
-  }
-
-
-  tic()
-  perms = rlabel(ppp_obj, nsim = nperm)
-  kperm = map_dfr(perms, kf)
-  kperm = kperm %>% group_by(r) %>% summarise(var = var(trans),
-                                              pvalue = sum(trans >= khat)/nperm,
-                                              expectation = mean(trans)) %>% ungroup() %>%
-    mutate(method = "kperm")
-  time_perm = toc()
-
-
   times = c((time_kepd$toc - time_kepd$tic),
-            (time_kepdThin$toc - time_kepdThin$tic),
-            (time_perm$toc - time_perm$tic))
+            (time_kepdThin$toc - time_kepdThin$tic))
 
 
   ################################################################################
   ################################################################################
   # aggregate data
-  res = bind_rows(kepd, kepdThin, kperm) %>%
-    mutate(khat = rep(k$trans, times = 3),
+  res = bind_rows(kepd, kepdThin) %>%
+    mutate(khat = rep(k$trans, times = 2),
            time = rep(times, each = length(rvec)))
 
   return(res)

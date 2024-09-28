@@ -22,10 +22,8 @@ wd = getwd()
 
 if(substring(wd, 2, 6) == "Users"){
   doLocal = TRUE
-  nperm = 10
 }else{
   doLocal = FALSE
-  nperm = 1000
 }
 
 
@@ -41,18 +39,19 @@ source(here::here("source", "get_permutation_distribution.R"))
 ###############################################################
 
 n = c(100, 500, 2000, 5000)
-abundance = c(0.001, 0.01, 0.1, 0.5, 0.75)
-type = c("hom", "inhom", "homClust", "inhomClust", "inhomTightClust")
+abundance = c(0.01, 0.1, 0.5, 0.75)
+#type = c("hom", "inhom", "homClust", "inhomClust", "inhomTightClust")
+type = c("hom", "inhom", "inhomTightClust")
 
-seed_start = 1000
-N_iter = 1000
-maxiter = (seq(1, N_iter, by = 50)-1) + 50
+seed_start = 1000 + 1000
+N_iter = 500
+maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
                      abundance = abundance,
-                     maxiter = (seq(1, N_iter, by = 50)-1) + 50) %>%
+                     maxiter = (seq(1, N_iter, by = 100)-1) + 100) %>%
   mutate(m = n * abundance) %>%
   filter(m >=5)
 
@@ -87,10 +86,10 @@ type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
 maxiter = params$maxiter[scenario]
 
-iter_vec = (maxiter-49):maxiter
+iter_vec = (maxiter-99):maxiter
 
-results = vector("list", length = 50)
-for(i in 1:50){
+results = vector("list", length = 100)
+for(i in 1:100){
   # set seed
   seed.iter = (SEED.START - 1)*N_iter + iter_vec[i]
   set.seed(seed.iter)
@@ -108,8 +107,7 @@ for(i in 1:50){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k_full = get_k_power(ppp_obj$full, nperm = nperm)
-  #k_holes = get_k_power(ppp_obj$holes, nperm = nperm)
+  k_full = get_k_power(ppp_obj$full)
 
   lambda_n = n
   lambda_m = m
