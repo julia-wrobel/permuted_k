@@ -38,7 +38,7 @@ source(here::here("source", "utils_k.R"))
 n = c(100, 500, 2000, 5000)
 abundance = c(0.01, 0.1, 0.5)
 type = c("hom", "inhom", "homClust", "inhomClust")
-nperm = 1000
+nperm = 100
 seed_start = 1000
 N_iter = 50
 
@@ -51,7 +51,7 @@ params = expand.grid(seed_start = seed_start,
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_expectation", "varyAbundance"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_expectation", "varyAbundance_nperm100"), Date), showWarnings = FALSE)
 
 
 ## define number of simulations and parameter scenario
@@ -116,7 +116,7 @@ for(iter in 1:N_iter){
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_expectation", "varyAbundance", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_expectation", "varyAbundance_nperm100", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 

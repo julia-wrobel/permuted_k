@@ -60,16 +60,6 @@ df = map_dfr(files, merge_files)
 ```
 
 
-```{r}
-# get files for 100 and 10000 perms
-files = list.files(here::here("output", "univariate_variance", "varyAbundance_permOnly"),
-                   full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
-
-df_perm = map_dfr(files, merge_files, variance = TRUE) %>%
-  mutate(method = ifelse(method == "kperm", str_c(method, nperm), method)) %>%
-  select(-nperm)
-```
-
 
 
 ```{r}
@@ -83,10 +73,6 @@ times_df = df %>%
   pivot_longer(time_kinhom:time_kepdThin, 
                names_to = "method", values_to = "time",
                names_prefix = "time_") %>%
-  bind_rows(.,
-            df_perm %>%
-  select(r, iter, type, lambda_n, abundance, method, time) %>%
-  mutate(type = as.character(type))) %>%
   mutate(method = factor(method,
                          levels = c("k", "kinhom", "kperm100", "kperm10000", 
                                     "kepd", "kepdThin"),
