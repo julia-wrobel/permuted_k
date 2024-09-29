@@ -35,8 +35,8 @@ source(here::here("source", "utils_k.R"))
 ## set simulation design elements
 ###############################################################
 
-n = c(500, 2000, 5000)
-m = c(50, 100, 500)
+n = c(100, 500, 2000, 5000)
+abundance = c(0.01, 0.1, 0.5)
 type = c("hom", "inhom", "homClust", "inhomClust")
 
 seed_start = 1000
@@ -45,11 +45,14 @@ N_iter = 50
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
-                     m = m)
+                     abundance = abundance)  %>%
+  mutate(m = n * abundance) %>%
+  filter(m >=5)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_expectation", "varyAbundance"), Date), showWarnings = FALSE)
+
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
@@ -70,6 +73,8 @@ if(doLocal) {
 ###############################################################
 n = params$n[scenario]
 m = params$m[scenario]
+abundance = params$abundance[scenario]
+m = n * abundance
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
 
@@ -89,31 +94,29 @@ for(iter in 1:N_iter){
     )
   }
 
-  par = c(iter, scenario, seed.iter, type, ppp_obj$full$n, subset(ppp_obj$full, marks == "immune")$n,
-          ppp_obj$holes$n, subset(ppp_obj$holes, marks == "immune")$n, n, m)
+  par = c(iter, scenario, seed.iter, type, ppp_obj$full$n, subset(ppp_obj$full, marks == "immune")$n, n, m, abundance)
 
   par = matrix(par, nrow = 1)
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
   k_full = get_k(ppp_obj$full)
-  k_holes = get_k(ppp_obj$holes)
 
 
-  results_mat = cbind(k_full, k_holes)
 
-  n1 = c("iter","scenario", "seed", "type", "n", "m", "n_hole", "m_hole", "lambda_n", "lambda_m")
+  results_mat = k_full
+
+  n1 = c("iter","scenario", "seed", "type", "n", "m", "lambda_n", "lambda_m", "abundance")
   n2 = colnames(k_full)
-  n3 = paste0(colnames(k_holes), "_hole")
 
-  colnames(results_mat) <- c(n2, n3)
+  colnames(results_mat) <- c(n2)
   colnames(par) <- n1
 
   results[[iter]] = bind_cols(as_tibble(results_mat), as_tibble(par))
 } # end for loop
 
 
-filename = paste0(here::here("output", Date), "/univariate_expectation_", scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_expectation", "varyAbundance", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 

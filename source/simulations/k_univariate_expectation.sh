@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --array=1-36%36
+#SBATCH --array=1-44%20
 #SBATCH --job-name=univariate_expectation_job
 #SBATCH --mem=50G
-#SBATCH --partition=wrobel
+#SBATCH --partition=encore
 #SBATCH --output=univariate_expectation.out
 #SBATCH --error=univariate_expectation.err
 
