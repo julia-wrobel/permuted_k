@@ -38,7 +38,7 @@ source(here::here("source", "utils_k.R"))
 n = c(100, 500, 2000, 5000)
 abundance = c(0.01, 0.1, 0.5)
 type = c("hom", "inhom", "homClust", "inhomClust")
-
+nperm = 1000
 seed_start = 1000
 N_iter = 50
 
@@ -100,7 +100,7 @@ for(iter in 1:N_iter){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k_full = get_k(ppp_obj$full)
+  k_full = get_k(ppp_obj$full, nperm = nperm)
 
 
 

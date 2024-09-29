@@ -51,7 +51,8 @@ Here we load and process simulation results. Full simulations involve 36 scenari
 
 ```{r}
 # load only results for VB and TS
-files = list.files(here::here("output", "20240819"), 
+files = list.files(here::here("output", "univariate_expectation", 
+                              "varyAbundance", "20240929"), 
 									 full.names =  TRUE)
 
 # call merge_files() defined in utils.R
@@ -60,10 +61,13 @@ df = map_dfr(files, merge_files)
 
 
 ```{r}
-# get files for 100 perms
+# get files for 100 and 10000 perms
 files = list.files(here::here("output", "univariate_variance", "varyAbundance_permOnly"),
                    full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
 
+df_perm = map_dfr(files, merge_files, variance = TRUE) %>%
+  mutate(method = ifelse(method == "kperm", str_c(method, nperm), method)) %>%
+  select(-nperm)
 ```
 
 
@@ -72,24 +76,25 @@ files = list.files(here::here("output", "univariate_variance", "varyAbundance_pe
 # make comp times dataset
 # ignoring holes datasets since we don't need all those scenarios
 times_df = df %>%
-  select(r, iter, scenario, type_char, starts_with("lambda"),
+  select(r, iter, type = type_char, lambda_n,
+         abundance,
          contains("time_")) %>%
   filter(r == .15) %>%
-  pivot_longer(time_kinhom:time_kperm_hole, 
+  pivot_longer(time_kinhom:time_kepdThin, 
                names_to = "method", values_to = "time",
                names_prefix = "time_") %>%
-  separate(method, into = c("method", "hole"), 
-           sep = "_", fill = "right") %>%
-  filter(is.na(hole)) %>%
-  select(-hole) %>%
-  group_by(method, type_char, lambda_n, lambda_nm) %>%
+  bind_rows(.,
+            df_perm %>%
+  select(r, iter, type, lambda_n, abundance, method, time) %>%
+  mutate(type = as.character(type))) %>%
+  mutate(method = factor(method,
+                         levels = c("k", "kinhom", "kperm100", "kperm10000", 
+                                    "kepd", "kepdThin"),
+                         labels = c("K", "Kinhom", "perm100", "perm10k", "KAMP",
+                                    "KAMP lite"))) %>%
+  group_by(method, type, lambda_n, abundance) %>%
   summarize(time = median(time)) %>%
-  ungroup() %>%
-  mutate(method = factor(method, levels = c("k", "kinhom", "kperm", "kepd", "kepdThin"),
-                         labels = c("k", "inhom", "perm", "epd", "epd thin")))
-  
-
-
+  ungroup() 
 
 # degree of clustering
 doc_df = df %>%
@@ -146,20 +151,20 @@ p_doc = doc_df %>%
 
 ```{r}
 p_times = times_df %>%
-  filter(type_char == "inhomClust") %>%
-  mutate(lambda_nm = factor(lambda_nm),
+  filter(type == "inhom", lambda_n != 100) %>%
+  mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n,
                            labels = c("lambda[n]: 500",
                                       "lambda[n]: 2000",
                                       "lambda[n]: 5000"))) %>%
-  ggplot(aes(lambda_nm, log(time), color = method, 
-             group = interaction(lambda_nm, method))) +
+  ggplot(aes(abundance, log(time), color = method, 
+             group = interaction(abundance, method))) +
   geom_point() +
   theme_minimal() + 
   theme(legend.position = "top",
         legend.title = element_blank()) +
   geom_line(aes(group = method)) +
-  labs(x = expression(lambda[m]),
+  labs(x = "abundance",
        y = "median log(seconds)") +
   facet_wrap(~lambda_n, labeller = label_parsed)
   
