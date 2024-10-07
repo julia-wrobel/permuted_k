@@ -114,7 +114,7 @@ get_k = function(ppp_obj,
 
 ## this function is for getting the variance and hypothesis test for each statistic
 ## Not gonna do Kinhom here.
-get_k_power = function(ppp_obj, rvec = c(0, .15)){
+get_k_power = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
 
   ################################################################################
   ################################################################################
@@ -139,7 +139,7 @@ get_k_power = function(ppp_obj, rvec = c(0, .15)){
   # calculate kamp statistic and variance
   tic()
   kamp = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj) %>%
-    select(r, var = kvpd, pvalue, expectation = kamp) %>%
+    select(r, var = kvpd, pvalue, expectation = kepd) %>%
     mutate(method = "kamp")
   time_kamp = toc()
 
@@ -150,7 +150,7 @@ get_k_power = function(ppp_obj, rvec = c(0, .15)){
   tic()
   ppp_obj_lite = rthin(ppp_obj, P = .5)
   kamplite = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_lite) %>%
-    select(r, var = kvpd, pvalue, expectation = kamp) %>%
+    select(r, var = kvpd, pvalue, expectation = kepd) %>%
     mutate(method = "kamplite")
   time_kamplite = toc()
 
@@ -177,7 +177,7 @@ get_k_power = function(ppp_obj, rvec = c(0, .15)){
 
 ## this function is for getting the variance and hypothesis test for each statistic
 ## Not gonna do Kinhom here.
-get_k_power_permOnly = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
+get_k_power_permOnly = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1), nperm = 1000){
 
   ################################################################################
   ################################################################################

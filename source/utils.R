@@ -10,17 +10,7 @@ merge_files = function(file, variance = FALSE){
   if(variance){
     res = res %>%
       filter(r == 0.15, holes == FALSE)
-
-  }else{
-    res = res %>%
-      mutate(type_char = case_when(
-        type == 1 ~ "hom",
-        type == 2 ~ "inhom",
-        type == 3 ~ "homClust",
-        TRUE ~ "inhomClust"
-      ))
   }
-
 
   res
 }

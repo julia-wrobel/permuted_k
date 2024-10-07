@@ -16,6 +16,8 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(purrr))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(tictoc))
+suppressPackageStartupMessages(library(scSpatialSIM))
+
 
 
 wd = getwd()
@@ -32,19 +34,19 @@ if(substring(wd, 2, 6) == "Users"){
 ###############################################################
 source(here::here("source", "simulate_ppp.R"))
 source(here::here("source", "utils_k.R"))
+source(here::here("source", "simulate_scSpatialSim.R"))
 source(here::here("source", "get_permutation_distribution.R"))
 
 ###############################################################
 ## set simulation design elements
 ###############################################################
 
-n = c(100, 500, 2000, 5000)
-abundance = c(0.01, 0.1, 0.5, 0.75)
-#type = c("hom", "inhom", "homClust", "inhomClust", "inhomTightClust")
-type = c("hom", "inhom", "inhomTightClust")
-
-seed_start = 1000 + 1000
-N_iter = 500
+n = c(1000, 2000, 5000, 10000)
+abundance = c(0.01, 0.1, 0.2)
+type = c("hom","homClust", "inhomClust")
+nperm = 1000
+seed_start = 1000
+N_iter = 1000
 maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
@@ -79,9 +81,6 @@ if(doLocal) {
 n = params$n[scenario]
 abundance = params$abundance[scenario]
 m = n * abundance
-
-
-
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
 maxiter = params$maxiter[scenario]
@@ -95,23 +94,22 @@ for(i in 1:100){
   set.seed(seed.iter)
 
   # simulate data
-  ppp_obj <- NULL
-  attempt <- 1
-  while(is.null(ppp_obj) && attempt <= 5) {
-    attempt <- attempt + 1
-    try(
-      ppp_obj <- mxsim_univariate(n, m, type)
-    )
+  if(type %in% c("hom", "inhom")){
+    ppp_obj <- mxsim_univariate(n, abundance, type)
+  }else{
+    ppp_obj <- sim_scSpatial(n, abundance, type)
   }
+
 
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k_full = get_k_power(ppp_obj$full)
+  k_kamp = get_k_power(ppp_obj)
+  k_perm = get_k_power_permOnly(ppp_obj, nperm = nperm)
 
   lambda_n = n
   lambda_m = m
-  res = mutate(k_full, holes = FALSE, n = ppp_obj$full$n, m = subset(ppp_obj$full, marks == "immune")$n) %>%
+  res = mutate(bind_rows(k_kamp, k_perm),n = ppp_obj$n, m = subset(ppp_obj, marks == "immune")$n) %>%
     mutate(iter = iter_vec[i],
            scenario = scenario,
            seed = seed.iter,
