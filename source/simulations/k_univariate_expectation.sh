@@ -2,7 +2,7 @@
 #SBATCH --array=1-48%30
 #SBATCH --job-name=univariate_expectation_job
 #SBATCH --mem=50G
-#SBATCH --partition=encore
+#SBATCH --partition=encore,wrobel
 #SBATCH --output=univariate_expectation.out
 #SBATCH --error=univariate_expectation.err
 
