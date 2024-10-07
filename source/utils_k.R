@@ -1,7 +1,9 @@
 ## function for calculating K in simulated data. Takes in full ppp object
 ## calculates time for the fperm step.
 ## can then apply this to a list of ppp objects
-get_k = function(ppp_obj, rvec = c(0, .05, .075,.1, .15, .2), nperm = 1000){
+get_k = function(ppp_obj,
+                 #rvec = c(0, .05, .075,.1, .15, .2),
+                 nperm = 1000){
 
 
   ################################################################################
@@ -9,10 +11,19 @@ get_k = function(ppp_obj, rvec = c(0, .05, .075,.1, .15, .2), nperm = 1000){
   # estimate K using tranlational correction
   tic()
   k = Kcross(ppp_obj, i = "immune", j = "immune",
-             r = rvec,
+             #r = rvec,
              correction = c("trans"))
-
   time_k = toc()
+
+  # pull vector of r values
+  rvec = k$r
+
+  k = k %>%
+    as_tibble() %>%
+    mutate(method = "k") %>%
+    select(r, csr = theo, trans, method)
+
+
 
   ################################################################################
   ################################################################################
@@ -20,28 +31,41 @@ get_k = function(ppp_obj, rvec = c(0, .05, .075,.1, .15, .2), nperm = 1000){
   tic()
   kinhom = Kinhom(subset(ppp_obj, marks == "immune"),
                   r = rvec,
-                  correction = c("trans"))
+                  correction = c("trans")) %>%
+    as_tibble() %>% mutate(method = "kinhom") %>%
+    select(r, csr = theo, trans, method)
   time_kinhom = toc()
 
 
   ################################################################################
   ################################################################################
-  # calculate kepd statistic
+  # calculate KAMP statistic
   tic()
-  kepd = Kest(ppp_obj,
+  kamp = Kest(ppp_obj,
               r = rvec,
-              correction = c("trans"))
-  time_kepd = toc()
+              correction = c("trans")) %>%
+    as_tibble() %>%
+    mutate(method = "kamp",
+           csr = trans,
+           trans = k$trans) %>%
+    select(r, csr, trans, method)
+  time_kamp = toc()
+
 
   ################################################################################
   ################################################################################
-  # calculate kepd statistic on 50% thinned data
+  # calculate kamp statistic on 50% thinned data
   tic()
-  ppp_obj_thin = rthin(ppp_obj, P = .5)
-  kepd_thin = Kest(ppp_obj_thin,
+  ppp_obj_lite = rthin(ppp_obj, P = .5)
+  kamp_lite = Kest(ppp_obj_lite,
                    r = rvec,
-                   correction = c("trans"))
-  time_kepdThin = toc()
+                   correction = c("trans")) %>%
+    as_tibble() %>%
+    mutate(method = "kamp_lite",
+           csr = trans,
+           trans = k$trans) %>%
+    select(r, csr, trans, method)
+  time_kamplite = toc()
 
   ################################################################################
   ################################################################################
@@ -58,28 +82,33 @@ get_k = function(ppp_obj, rvec = c(0, .05, .075,.1, .15, .2), nperm = 1000){
   tic()
   perms = rlabel(ppp_obj, nsim = nperm)
   kperm = map_dfr(perms, kf)
-  kperm = kperm %>% group_by(r) %>% summarise(trans = mean(trans)) %>% ungroup()
+  kperm = kperm %>% group_by(r) %>% summarise(csr = mean(trans)) %>% ungroup() %>%
+    mutate(trans = k$trans,
+           method = "perm") %>%
+    select(r, csr, trans, method)
   time_perm = toc()
 
 
   ################################################################################
   ################################################################################
-  res = tibble(r = rvec,
-               ktheo = filter(as_tibble(k), r %in% rvec)$theo,
-               khat = filter(as_tibble(k),r %in% rvec)$trans,
-               kinhomhat = filter(as_tibble(kinhom), r %in% rvec)$trans,
-               kinhomtheo = filter(as_tibble(kinhom), r %in% rvec)$theo,
-               kepd = filter(as_tibble(kepd), r %in% rvec)$trans,
-               kperm = kperm$trans,
-               kepdThin = filter(as_tibble(kepd_thin), r %in% rvec)$trans,
-               time_kinhom = time_kinhom$toc - time_kinhom$tic,
-               time_k = time_k$toc - time_k$tic,
-               time_kepd = (time_kepd$toc - time_kepd$tic) + time_k,
-               time_kepdThin = (time_kepdThin$toc - time_kepdThin$tic) + time_k,
-               time_kperm = (time_perm$toc - time_perm$tic) + time_k)
+
+  times = c(time_k$toc - time_k$tic,
+             time_kinhom$toc - time_kinhom$tic,
+             time_kamp$toc - time_kamp$tic,
+             time_kamplite$toc - time_kamplite$tic,
+             time_perm$toc - time_perm$tic)
 
 
-  as.matrix(res)
+  ################################################################################
+  ################################################################################
+  # aggregate data
+  res = bind_rows(k, kinhom, kamp, kamp_lite, kperm) %>%
+    mutate(time = rep(times, each = length(rvec)))
+
+  return(res)
+
+
+
 }
 
 
@@ -97,43 +126,43 @@ get_k_power = function(ppp_obj, rvec = c(0, .15)){
              r = rvec,
              correction = c("trans"))
   time_k = toc()
-  # Not using anything for hypothesis testing for K under theoretical CSR. Need to build this in later.
+  # Not using anyliteg for hypothesis testing for K under theoretical CSR. Need to build this in later.
   # get variance based on block bootstrap for use in confidence intervals
   # not the same as the permutation variance, let' s
-  # I don't think this is right
+  # I don't litek this is right
   #var_k = envelope(ppp_obj, fun = Kcross, i = "immune",
    #        j = "immune", r = rvec, correction = c("trans"), global = FALSE,
     #       nsim = 999, alternative = "greater")
 
   ################################################################################
   ################################################################################
-  # calculate kepd statistic and variance
+  # calculate kamp statistic and variance
   tic()
-  kepd = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj) %>%
-    select(r, var = kvpd, pvalue, expectation = kepd) %>%
-    mutate(method = "kepd")
-  time_kepd = toc()
+  kamp = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj) %>%
+    select(r, var = kvpd, pvalue, expectation = kamp) %>%
+    mutate(method = "kamp")
+  time_kamp = toc()
 
 
   ################################################################################
   ################################################################################
-  # calculate kepd statistic and variance on 50% thinned data
+  # calculate kamp statistic and variance on 50% litened data
   tic()
-  ppp_obj_thin = rthin(ppp_obj, P = .5)
-  kepdThin = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_thin) %>%
-    select(r, var = kvpd, pvalue, expectation = kepd) %>%
-    mutate(method = "kepdThin")
-  time_kepdThin = toc()
+  ppp_obj_lite = rthin(ppp_obj, P = .5)
+  kamplite = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_lite) %>%
+    select(r, var = kvpd, pvalue, expectation = kamp) %>%
+    mutate(method = "kamplite")
+  time_kamplite = toc()
 
 
-  times = c((time_kepd$toc - time_kepd$tic),
-            (time_kepdThin$toc - time_kepdThin$tic))
+  times = c((time_kamp$toc - time_kamp$tic),
+            (time_kamplite$toc - time_kamplite$tic))
 
 
   ################################################################################
   ################################################################################
   # aggregate data
-  res = bind_rows(kepd, kepdThin) %>%
+  res = bind_rows(kamp, kamplite) %>%
     mutate(khat = rep(k$trans, times = 2),
            time = rep(times, each = length(rvec)))
 
@@ -160,10 +189,10 @@ get_k_power_permOnly = function(ppp_obj, rvec = c(0, .15), nperm = 10000){
              r = rvec,
              correction = c("trans"))
   time_k = toc()
-  # Not using anything for hypothesis testing for K under theoretical CSR. Need to build this in later.
+  # Not using anyliteg for hypothesis testing for K under theoretical CSR. Need to build this in later.
   # get variance based on block bootstrap for use in confidence intervals
   # not the same as the permutation variance, let' s
-  # I don't think this is right
+  # I don't litek this is right
   #var_k = envelope(ppp_obj, fun = Kcross, i = "immune",
   #        j = "immune", r = rvec, correction = c("trans"), global = FALSE,
   #       nsim = 999, alternative = "greater")

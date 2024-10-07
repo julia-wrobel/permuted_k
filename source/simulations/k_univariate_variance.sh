@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --array=1-225%50
 #SBATCH --job-name=univariate_variance_job
-#SBATCH --mem=60G
 #SBATCH --partition=wrobel
 #SBATCH --output=univariate_variance.out
 #SBATCH --error=univariate_variance.err

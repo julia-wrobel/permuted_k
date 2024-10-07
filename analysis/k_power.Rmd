@@ -21,6 +21,7 @@ library(viridis)
 library(spatstat.random)
 library(patchwork)
 library(ggbreak)
+library(latex2exp)
 
 knitr::opts_chunk$set(echo = TRUE,
   warning = FALSE,
@@ -30,7 +31,7 @@ knitr::opts_chunk$set(echo = TRUE,
   fig.path = '../output/'
 )
 
-theme_set(theme_bw() + theme(legend.position = "bottom"))
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 # Source code
@@ -95,7 +96,7 @@ df_type1 = df %>%
          abundance > 0.001,
          abundance < .75
          ) %>%
-  filter(method %in% c("perm1k", "perm100", "perm10k")) %>%
+  #filter(method %in% c("perm1k", "perm100", "perm10k")) %>%
   group_by(type, method, lambda_n, abundance) %>%
   summarize(type1_error = sum(pvalue<= 0.05)/n(),
             n_sim = n()) %>%
@@ -104,18 +105,17 @@ df_type1 = df %>%
 df_type1 %>%
   arrange(n_sim)
 
-df_type1 %>%
-  arrange(type, desc(method), lambda_n, abundance)
-
 
 df_type1 %>%
-  filter(n_sim >= 100) %>%
+  filter(n_sim >= 400) %>%
   filter(type == "hom") %>%
+  filter(method %in% c("KAMP", "KAMP lite", "perm1k")) %>%
   mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, type1_error, group = method,
              color = method)) +
   geom_point() +
+  scale_color_viridis(discrete = TRUE) +
   geom_line() +
   labs(y = "Type 1 error", x = "", title = "Type 1 error") +
   geom_hline(yintercept = 0.05, linetype = 2) +
@@ -129,27 +129,57 @@ df_type1 %>%
 Power = P(reject Ho|H1 True)
 
 ```{r}
-df %>%
+power = df %>%
     filter(type %in% c("inhomTightClust"),
            abundance > 0.001,
-          abundance < .75,
-          method != "perm1k"
+          abundance == 0.1,
+          method != "perm100",
+          method != "perm10k"
           ) %>%
   group_by(type, method, lambda_n, abundance) %>%
   summarize(power = sum(pvalue<= 0.05)/n(),
             n_sim = n()) %>%
- # filter(n_sim >= 700) %>%
+  filter(n_sim >= 400) %>%
   ungroup() %>%
     mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, power, group = method,
              color = method, linetype = method)) +
-  geom_point() +
-  geom_line() +
-  labs(y = "Power", x = "", title = "Power") +
-  geom_hline(yintercept = 0.90, linetype = 2) +
-  facet_wrap(~abundance, nrow = 1)
+  geom_point(size = 4) +
+  geom_line(linewidth = 2) +
+  scale_color_viridis(discrete = TRUE) +
+  theme(legend.position = c(.7, .5),
+        legend.title = element_blank()) +
+   geom_hline(yintercept = 0.9, linetype = 2)  +
+  labs(y = "Power", x = TeX("$\\lambda_n$"), title = "Power") 
 ```
 
 
 
+
+
+```{r}
+type1 = df_type1 %>%
+  filter(n_sim >= 400) %>%
+  filter(type == "hom",
+         abundance == 0.01) %>%
+  filter(method %in% c("KAMP", "KAMP lite", "perm1k")) %>%
+  mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n)) %>%
+  ggplot(aes(lambda_n, type1_error, group = method,
+             color = method, linetype = method)) +
+  geom_point(size = 4) +
+  geom_line(linewidth = 2) +
+  #ylim(0.045, 0.065) +
+  theme(legend.position = "none") +
+  scale_color_viridis(discrete = TRUE) +
+  labs(y = "Type 1 error", x = TeX("$\\lambda_n$"), title = "Type 1 error") +
+  geom_hline(yintercept = 0.05, linetype = 2) 
+
+```
+
+
+
+```{r talk_power}
+type1+power
+```

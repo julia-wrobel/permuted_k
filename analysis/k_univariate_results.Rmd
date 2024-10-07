@@ -57,6 +57,14 @@ files = list.files(here::here("output", "univariate_expectation",
 
 # call merge_files() defined in utils.R
 df = map_dfr(files, merge_files)
+
+
+files = list.files(here::here("output", "univariate_expectation", 
+                              "varyAbundance_nperm100", "20240929"), 
+									 full.names =  TRUE)
+
+# call merge_files() defined in utils.R
+df_perm100 = map_dfr(files, merge_files)
 ```
 
 
@@ -70,13 +78,18 @@ times_df = df %>%
          abundance,
          contains("time_")) %>%
   filter(r == .15) %>%
-  pivot_longer(time_kinhom:time_kepdThin, 
+  pivot_longer(time_kinhom:time_kperm, 
                names_to = "method", values_to = "time",
                names_prefix = "time_") %>%
+  bind_rows(., mutate(df_perm100, method = "perm100") %>%
+              select(r, iter, type = type_char,
+                      lambda_n, abundance, method, 
+                     time = time_kperm)) %>%
   mutate(method = factor(method,
-                         levels = c("k", "kinhom", "kperm100", "kperm10000", 
+                         levels = c("k", "kinhom", "perm100", 
+                                    "kperm",  
                                     "kepd", "kepdThin"),
-                         labels = c("K", "Kinhom", "perm100", "perm10k", "KAMP",
+                         labels = c("K", "Kinhom","perm100", "perm1000", "KAMP",
                                     "KAMP lite"))) %>%
   group_by(method, type, lambda_n, abundance) %>%
   summarize(time = median(time)) %>%
@@ -84,25 +97,32 @@ times_df = df %>%
 
 # degree of clustering
 doc_df = df %>%
-  select(r, iter, scenario, type_char, starts_with("lambda"), starts_with("k")) %>%
-  filter(r == .15, lambda_nm %in% c(50, 500)) %>%
-  pivot_longer(ktheo:kepdThin_hole, 
-               names_to = "method", values_to = "value") %>%
-  separate(method, into = c("method", "hole"), 
-           sep = "_", fill = "right") %>%
-  filter(is.na(hole)) %>%
-  select(-hole) %>%
+  select(r, iter, type = type_char, lambda_n,
+         abundance,
+         starts_with("k")) %>%
+  filter(r == .15) %>%
+  pivot_longer(ktheo:kepdThin, 
+               names_to = "method", values_to = "value") %>%  
+  bind_rows(., mutate(df_perm100, method = "perm100") %>%
+              select(r, iter, type = type_char,
+                      lambda_n, abundance, method, 
+                     value = kperm)) %>%
   pivot_wider(names_from = method, values_from = value) %>%
   mutate(k = khat - ktheo,
          inhom = kinhomhat - kinhomtheo,
-         perm = khat - kperm,
+         perm100 = khat - perm100,
+         perm1000 = khat - kperm,
          epd = khat - kepd,
          epdThin = khat - kepdThin) %>%
-  select(r, iter, scenario, type_char, contains("lambda"), k, inhom, perm, epd, epdThin) %>%
+  select(r, iter, type, lambda_n, abundance, k, inhom, perm100,
+         perm1000, epd, epdThin) %>%
   pivot_longer(k:epdThin, names_to = "method", values_to = "value") %>%
-  mutate(method = factor(method, levels = c("k", "inhom", "perm", "epd", "epdThin"),
-                         labels = c("k", "inhom", "perm", "epd", "epd thin")),
-         type_char = factor(type_char, levels = c("hom", "inhom", "homClust", "inhomClust"),
+  mutate(method = factor(method, levels = c("k", "inhom", "perm100",
+                                            "perm1000", 
+                                            "epd", "epdThin"),
+                         labels = c("K", "inhom", "perm100", "perm1000", 
+                                    "KAMP", "KAMP lite")),
+         type_char = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
                             labels = c("homogeneous",
                                        "inhomogeneous",
                                        "clustered",
@@ -117,18 +137,21 @@ doc_df = df %>%
 
 
 ```{r}
-p_doc = doc_df %>%
-  filter(lambda_n == 2000) %>%
-  mutate(lambda_nm = factor(lambda_nm))  %>%
-  ggplot(aes(lambda_nm, value, group = interaction(lambda_nm, method), fill = method)) +
+doc_df %>%
+  filter(lambda_n == 5000) %>%
+  mutate(abundance = factor(abundance))  %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
-  labs(x = expression(lambda[m]),
+  labs(x = "abundance",
        y = "degree of clustering") +
   theme_minimal() +
   theme(legend.position = "none",
         legend.title = element_blank()) +
-  facet_wrap(~type_char, scales = "free", nrow = 1)
+  facet_wrap(~type, scales = "free", nrow = 1)
 ```
+
+
+
 
 
 
