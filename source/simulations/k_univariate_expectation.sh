@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --array=1-48%48
 #SBATCH --job-name=univariate_expectation_job
-#SBATCH --mem=50G
+#SBATCH --mem=20G
 #SBATCH --partition=encore
 #SBATCH --output=univariate_expectation.out
 #SBATCH --error=univariate_expectation.err
