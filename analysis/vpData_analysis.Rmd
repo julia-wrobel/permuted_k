@@ -19,6 +19,7 @@ library(patchwork)
 library(broom)
 library(viridis)
 library(RESI)
+library(ggstance)
 library(latex2exp)
 
 knitr::opts_chunk$set(echo = TRUE,
@@ -29,7 +30,17 @@ knitr::opts_chunk$set(echo = TRUE,
   fig.path = '../output/'
 )
 
-theme_set(theme_bw() + theme(legend.position = "bottom"))
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+
+# Define a custom color palette for the methods
+my_colors <- c(
+  "K" = "#440154",
+  "perm" = "#2A788E",
+  # perm wald = 22A884,
+  "KAMP" = "#7AD151",
+  "KAMP lite" = "#FDE725"
+)
 ```
 
 # Load data
@@ -65,7 +76,7 @@ times_df = df %>%
                names_to = "method", values_to = "time",
                names_prefix = "time_") %>%
   mutate(method = factor(method, levels = c("k","kperm", "kepd", "kepdThin"),
-                         labels = c("k", "perm", "epd", "epd thin")))
+                         labels = c("K", "perm", "KAMP", "KAMP lite")))
   
 
 # make degree of clustering dataset for use in survival analysis
@@ -83,10 +94,13 @@ doc_df = df %>%
 
 
 # get pvalues 
-dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE)
+dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE) %>%
+    mutate(z = (khat-expectation) / sqrt(var),
+         pvalue = pnorm(-z))  %>%
+  select(-z)
 
-#dfp = dfp %>%
- # filter(r > 49.5, r < 51)
+
+ 
 ```
 
 
@@ -164,27 +178,6 @@ if(file.exists(filename)){
 ```
 
 
-```{r}
-cph %>%
-  mutate(term = ifelse(term %in% c("k", "epd"), "fundiff", term)) %>%
-  filter(term == "fundiff") %>%
-  ggplot(aes(r, log(p.value), group = epd, color = epd)) +
-  geom_hline(yintercept = log(0.05), linetype = 2) +
-  geom_point()
-
-```
-
-
-
-```{r}
-cph %>%
-  mutate(term = ifelse(term %in% c("k", "epd"), "fundiff", term)) %>%
-  filter(term == "fundiff") %>%
-  ggplot(aes(r, resi, group = epd, color = epd)) +
-  geom_point()
-```
-
-
 
 
 
@@ -197,8 +190,11 @@ clinical %>%
   group_by(stat) %>%
   summarize(median = median(value),
             q25 = quantile(value, .25),
-            q75 = quantile(value, .75)) %>%
-  ungroup()
+            q75 = quantile(value, .75),
+            min = min(value),
+            max = max(value)) %>%
+  ungroup() %>%
+  select(stat, min, q25, median, q75, max)
 
 ```
 
@@ -210,12 +206,12 @@ Computation times for expectation.
 ```{r}
 times_df %>%
   group_by(method) %>%
-  summarize(median = median(time),
+  summarize(mean = mean(time),
             max_seconds = max(time),
             "total (minutes)" = sum(time)/60) %>%
   ungroup() %>%
-  arrange(median) %>%
-  rename("median (seconds)" = median) %>%
+  arrange(mean) %>%
+  rename("mean (seconds)" = mean) %>%
   knitr::kable(digits = 1)
 ```
 
@@ -254,6 +250,7 @@ dfp %>%
 ```
 
 
+
 # Figures
 
 
@@ -285,19 +282,24 @@ plot_k = function(idnum){
     theme(axis.text = element_blank(), legend.position = "none") 
   
 
-  p2 =   df %>%
+ p2 =   df %>%
     select(sample_id, r, k = khat, theo = ktheo, epd = kepd) %>%
     pivot_longer(k:epd, names_to = "K", values_to = "value") %>%
     filter(sample_id == idnum, K != "epd", r <=150) %>%
     mutate(K = factor(K, levels = c("k", "theo"))) %>%
-    ggplot(aes(r, value, group = K, color = K)) +
-    geom_line() +
-    scale_colour_manual(values = c("darkred", "blue"),
+    ggplot(aes(r, value, color = K, linetype = K)) +
+    geom_line(linewidth = 1.25) +
+    scale_colour_manual(values = c("darkred", "#440154"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
                                    theo = TeX("$CSR_{\\pi r^2}$"))) +
+    scale_linetype_manual(values = c(1, 2),
+                          labels = c(k = TeX("$\\hat{K}(r)$"),
+                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
     labs(y = TeX("K(r)")) +
-    theme(legend.position = c(.25,.7),
-          legend.title=element_blank())
+    theme(legend.position = c(.2,.75),
+          legend.title=element_blank(),
+          axis.text.y = element_blank(),
+          legend.text = element_text(size = 12))
 
   
   
@@ -306,15 +308,23 @@ plot_k = function(idnum){
     pivot_longer(k:epd, names_to = "K", values_to = "value") %>%
     filter(sample_id == idnum, r <=150) %>%
     mutate(K = factor(K, levels = c("k", "epd", "theo"))) %>%
-    ggplot(aes(r, value, group = K, color = K)) +
-    geom_line() +
-    scale_colour_manual(values = c("darkred", "purple", "blue"),
+    ggplot(aes(r, value, color = K, linetype = K)) +
+    geom_line(linewidth = 1.25) +
+    scale_colour_manual(values = c("darkred", "#7AD151", "#440154"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   epd = TeX("$CSR_{epd}$"),
+                                   epd = TeX("$CSR_{KAMP}$"),
+                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+        scale_linetype_manual(values = c(1, 4, 2),
+                        labels = c(k = TeX("$\\hat{K}(r)$"),
+                                   epd = TeX("$CSR_{KAMP}$"),
                                    theo = TeX("$CSR_{\\pi r^2}$"))) +
     labs(y = TeX("K(r)")) +
     theme(legend.position = c(.25,.7),
-          legend.title=element_blank())
+          legend.title=element_blank(),
+          axis.text.y = element_blank(),
+          legend.text = element_text(size = 12),
+          legend.background = element_rect(fill = "transparent", color = NA))
+
 
   
   list(p1, p2, p3)
@@ -346,7 +356,7 @@ patchy = plot_k(patchy_k)
 
 
 
-## Figure 5
+## Figure 4
 
 
 Same as Figure 1, but including EPD CSR value
@@ -359,4 +369,89 @@ Same as Figure 1, but including EPD CSR value
 ```
 
 
+
+
+
+## Figure 5
+
+Boxplots of expectation, variance, and p-value for KAMP, KAMP lite, perm
+
+```{r fig_ovarian_within}
+dfp %>% 
+  mutate(r = round(r),
+         var = log(var),
+         pvalue = log(pvalue)) %>%
+  filter(r %in% c(25, 125, 175)
+         #r == 125
+         ) %>%
+  select(sample_id, r, method, expectation, var, pvalue) %>%
+  pivot_longer(expectation:pvalue, names_to = "stat", values_to = "value") %>%
+  filter(!is.na(value)) %>%
+  mutate(r = factor(r),
+         stat = factor(stat, levels = c("expectation", "var", "pvalue"),
+                       labels = c("Expectation", "log(Variance)", "log(p-value)")),
+         method = factor(method, levels = c("k", "kperm", "kepd", "kepdThin"),
+                         labels = c("K", "perm", "KAMP", "KAMP lite"))) %>%
+  ggplot(aes(r, value, group = interaction(r, method), fill = method)) +
+  geom_boxplot() +
+  facet_wrap(~stat, scales = "free") +
+  scale_fill_manual(values = my_colors) +
+  theme(legend.position = c(0.55, 0.1),
+        legend.title = element_blank())
+```
+
+
+
+## Figure 6
+
+
+
+```{r}
+
+cph = cph %>% 
+  mutate(method = ifelse(epd == TRUE, "KAMP", "K"),
+         term = ifelse(term %in% c("k", "epd"), "doc", term),
+         r = round(r))
+```
+
+
+
+
+```{r fig_vpData_survival, fig.width = 9}
+
+p_df = cph %>%
+  filter(r %in% c(25, 125, 175), term == "doc") %>%
+  mutate(term = factor(term, label = "DoC")) %>%
+  mutate(#p = format.pval(p.value, digits = 1),
+         p = round(p.value, 2),
+        resi = -0.1) %>%
+  select(term, r, method, p,  resi)
+
+cph %>%
+  filter(r %in% c(25, 125, 175)) %>%
+  select(term, r, resi, lower, upper, p.value, method) %>%
+  mutate(term = factor(term,
+                       levels = c("age", "stage", "p_immune", "doc"),
+                       labels = c("age", "stage", "abundance", "DoC"))) %>%
+  ggplot(aes(term, resi, color = method, 
+             group = interaction(term, method), 
+             linetype = method)) +
+  geom_point(size = 2, position = position_dodge(0.5)) +
+  theme_bw() +
+  labs(y = "standardized effect size") +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = .7,
+                position = position_dodge(0.5)) +
+  theme(axis.title.x = element_blank(),
+                axis.text.x = element_text(angle = 45,  hjust=1,
+                                   size = 12),
+        strip.text = element_text(size = 12),
+        axis.title.y = element_text(size = 13),
+        legend.title = element_blank(),
+        legend.position = c(0.1, 0.15)) +
+  geom_text(data = p_df, aes(label = p),  
+            position = position_dodgev(0.1)) +
+  geom_hline(yintercept = 0, linetype = 3) +
+  scale_color_manual(values = my_colors) +
+  facet_wrap(~r, labeller = label_both)
+```
 

@@ -108,9 +108,6 @@ if(doLocal) {
 ## set which sample to run
 ###############################################################
 
-
-
-
 # subset data to a single sample
 ids = unique(ovarian$sample_id)
 
@@ -138,9 +135,6 @@ pp_obj = ppp(ovarian[["x"]], ovarian[["y"]], window = w, marks = ovarian[[marksv
 ################################################################################
 
 k_expectation = get_k(pp_obj, rvec = rvalues)
-
-
-k_expectation = as_tibble(k_expectation)
 
 ################################################################################
 ## Variance

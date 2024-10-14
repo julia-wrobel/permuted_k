@@ -2,7 +2,7 @@
 ## calculates time for the fperm step.
 ## can then apply this to a list of ppp objects
 get_k = function(ppp_obj,
-                 #rvec = c(0, .05, .075,.1, .15, .2),
+                 rvec = c(0, .05, .075,.1, .15, .2),
                  nperm = 1000){
 
 
@@ -11,12 +11,12 @@ get_k = function(ppp_obj,
   # estimate K using tranlational correction
   tic()
   k = Kcross(ppp_obj, i = "immune", j = "immune",
-             #r = rvec,
+             r = rvec,
              correction = c("trans"))
   time_k = toc()
 
   # pull vector of r values
-  rvec = k$r
+  #rvec = k$r
 
   k = k %>%
     as_tibble() %>%
@@ -122,10 +122,11 @@ get_k_power = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
   # paper for asymptotic pvalue for Ripley's K under homogeneity
   # estimate K using translation correction
   tic()
-  k = Kcross(ppp_obj, i = "immune", j = "immune",
+  k = Kest(subset(ppp_obj, marks == "immune"),
              r = rvec,
              correction = c("trans"))
   time_k = toc()
+
   # Not using anyliteg for hypothesis testing for K under theoretical CSR. Need to build this in later.
   # get variance based on block bootstrap for use in confidence intervals
   # not the same as the permutation variance, let' s
@@ -139,7 +140,7 @@ get_k_power = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
   # calculate kamp statistic and variance
   tic()
   kamp = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj) %>%
-    select(r, var = kvpd, pvalue, expectation = kepd) %>%
+    #select(r, var = kvpd, pvalue, expectation = kepd) %>%
     mutate(method = "kamp")
   time_kamp = toc()
 
@@ -150,7 +151,7 @@ get_k_power = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
   tic()
   ppp_obj_lite = rthin(ppp_obj, P = .5)
   kamplite = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_lite) %>%
-    select(r, var = kvpd, pvalue, expectation = kepd) %>%
+    #select(r, var = kvpd, pvalue, expectation = kepd) %>%
     mutate(method = "kamplite")
   time_kamplite = toc()
 
@@ -163,7 +164,7 @@ get_k_power = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
   ################################################################################
   # aggregate data
   res = bind_rows(kamp, kamplite) %>%
-    mutate(khat = rep(k$trans, times = 2),
+    mutate(k_trans = rep(k$trans, times = 2),
            time = rep(times, each = length(rvec)))
 
   return(res)

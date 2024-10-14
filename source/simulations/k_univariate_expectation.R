@@ -58,7 +58,7 @@ dir.create(file.path(here::here("output", "univariate_expectation", "varyAbundan
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 4
+  scenario = 3
   #scenario = 3
   N_iter = 2
 }else{
@@ -97,7 +97,7 @@ for(iter in 1:N_iter){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k_full = get_k(ppp_obj, nperm = nperm)
+  k_full = get_k(ppp_obj, rvec = c(0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2), nperm = nperm)
 
   lambda_n = n
   lambda_m = m

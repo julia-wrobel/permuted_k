@@ -31,6 +31,15 @@ knitr::opts_chunk$set(echo = TRUE,
   fig.path = '../output/'
 )
 
+
+my_colors <- c(
+  "K" = "#440154",
+  "Kinhom" = "#414487",
+  "perm" = "#2A788E",
+  "KAMP" = "#7AD151",
+  "KAMP lite" = "#FDE725"
+)
+
 theme_set(theme_bw() + theme(legend.position = "bottom"))
 ```
 
@@ -59,8 +68,6 @@ files = list.files(here::here("output", "univariate_expectation",
 # call merge_files() defined in utils.R
 df = map_dfr(files, merge_files)
 
-
-
 ```
 
 
@@ -78,7 +85,7 @@ times_df = df %>%
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
                                     "kamp_lite"),
-                         labels = c("K", "Kinhom","perm1000", "KAMP",
+                         labels = c("K", "Kinhom","perm", "KAMP",
                                     "KAMP lite")),
          lambda_m = abundance * lambda_n) %>%
   group_by(method, type, lambda_n, lambda_m) %>%
@@ -87,50 +94,64 @@ times_df = df %>%
 
 # degree of clustering
 doc_df = df %>%
-  select(r, iter, type, lambda_n,
-         abundance,
+  mutate(lambda_m = abundance * lambda_n)
+  select(r, iter, type, lambda_m,
+         lambda_n,
          method, csr, trans) %>%
-  filter(round(r,2) == 1.25) %>%
-  group_by(iter, type, lambda_n, abundance, method) %>%
-  slice(1) %>%
-  ungroup() %>%
   mutate(value = trans-csr) %>%
   mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
                                     "kamp_lite"),
-                         labels = c("K", "Kinhom","perm1000", "KAMP",
+                         labels = c("K", "Kinhom","perm", "KAMP",
                                     "KAMP lite")),
-         type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
-                            labels = c("homogeneous",
-                                       "inhomogeneous",
-                                       "homogeneous + clustered",
-                                       "inhomogeneous + clustered")))
+         #type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
+          #                  labels = c("homogeneous",
+           #                            "inhomogeneous",
+            #                           "homogeneous + clustered",
+             #                          "inhomogeneous + clustered"))
+         )
+
+
+
 ```
-
-
-
-
 
 ## Degree of clustering
 
 
+
+
 ```{r}
 doc_df %>%
-  filter(lambda_n == 5000) %>%
+  filter(lambda_n == 5000, r == unique(doc_df$r)[206]) %>%
   mutate(abundance = factor(abundance))  %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
   labs(x = "abundance",
        y = "degree of clustering") +
   theme_minimal() +
+  scale_fill_manual(values = my_colors) +
   theme(legend.position = "none",
         legend.title = element_blank()) +
-  facet_wrap(~type, scales = "free", nrow = 1)
+  facet_wrap(~type, scales = "free")
 ```
 
 
 
+```{r}
+df %>%
+  filter(lambda_n == 1000, r == unique(df$r)[206]) %>%
+  mutate(abundance = factor(abundance))  %>%
+  ggplot(aes(abundance, trans-csr, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering") +
+  theme_minimal() +
+  #scale_fill_manual(values = my_colors) +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~type, scales = "free")
+```
 
 
 
@@ -153,6 +174,7 @@ p_times = times_df %>%
   theme(legend.position = "top",
         legend.title = element_blank()) +
   geom_line(aes(group = method)) +
+  scale_color_manual(values = my_colors) +
   labs(x = TeX("$lambda_m$"),
        y = "median log(seconds)") +
   facet_wrap(~lambda_n, labeller = label_parsed, scales= "free")

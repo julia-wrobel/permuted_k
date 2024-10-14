@@ -8,8 +8,8 @@ merge_files = function(file, variance = FALSE){
   res = map_dfr(results, bind_rows)
 
   if(variance){
-    res = res %>%
-      filter(r == 0.15, holes == FALSE)
+    res = res #%>%
+      #filter(r == 0.15, holes == FALSE)
   }
 
   res

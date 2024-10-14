@@ -38,7 +38,7 @@ get_permutation_distribution = function(ppp_obj, rvalue) {
   indices = which(ppp_obj$marks=="immune")
   Kmat = Wr[indices,indices]
 
-  khat = areaW*sum(Kmat)/m/(m-1) # Ripley's K based on translation correction
+  khat = areaW*sum(Kmat)/(m*(m-1)) # Ripley's K based on translation correction
 
   mu_k = areaW*R0/npts/(npts-1) # expectation
   var_k = areaW^2*(2*R1*f1 + 4*R2*f2 + R3*f3)/m/m/(m-1)/(m-1) - mu_k^2   # variance
