@@ -53,9 +53,9 @@ get_permutation_distribution = function(ppp_obj, rvalue, bivariate = FALSE) {
   result = tibble(
     r = rvalue,
     khat = K,
-    kepd = mu_K, # K expectation under permutation distributions\
-    kvpd = var_K,
-    Zpd = Z_k, # test statistic
+    expectation = mu_K, # K expectation under permutation distributions\
+    var = var_K,
+    Z = Z_k, # test statistic
     pvalue = min(1, pval_appx)
   )
 
