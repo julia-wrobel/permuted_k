@@ -99,8 +99,17 @@ dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE) %>%
          pvalue = pnorm(-z))  %>%
   select(-z)
 
-
+# calculate DOC for the variance data
+dfp2 = dfp %>% 
+  mutate(csr = pi * r^2,
+         DoC = khat-expectation,
+         k = khat - csr) %>%
+  select(sample_id, r, method, DoC, k) %>%
+  pivot_wider(names_from = method, values_from = DoC) %>%
+  pivot_longer(k:kperm, names_to = "method", values_to = "DoC")
  
+
+dfp = left_join(dfp2, dfp)
 ```
 
 
@@ -233,21 +242,6 @@ times_df %>%
 ```
 
 
-# Summary statistics
-
-## Pvalues
-
-```{r}
-dfp %>%
-  filter(sample_id %in% clinical$sample_id, r > 1) %>%
-  select(sample_id, r, method, pvalue) %>% distinct() %>%
-  group_by(r, method) %>%
-  summarize(percent_sig_clustering = sum(pvalue<0.05)/n()) %>%
-  ungroup() %>%
-  filter(!is.na(percent_sig_clustering)) %>%
-  ggplot(aes(r, percent_sig_clustering, group = method, color = method)) +
-  geom_line()
-```
 
 
 
@@ -384,20 +378,22 @@ dfp %>%
   filter(r %in% c(25, 125, 175)
          #r == 125
          ) %>%
-  select(sample_id, r, method, expectation, var, pvalue) %>%
-  pivot_longer(expectation:pvalue, names_to = "stat", values_to = "value") %>%
-  filter(!is.na(value)) %>%
+  select(sample_id, r, method, DoC, var, pvalue) %>%
+  pivot_longer(DoC:pvalue, names_to = "stat", values_to = "value") %>%
+  #filter(!is.na(value)) %>%
   mutate(r = factor(r),
-         stat = factor(stat, levels = c("expectation", "var", "pvalue"),
-                       labels = c("Expectation", "log(Variance)", "log(p-value)")),
+         stat = factor(stat, levels = c("DoC", "var", "pvalue"),
+                       labels = c("Degree of clustering", "log(Variance)", "log(p-value)")),
          method = factor(method, levels = c("k", "kperm", "kepd", "kepdThin"),
                          labels = c("K", "perm", "KAMP", "KAMP lite"))) %>%
+  filter(value < 400000) %>%
   ggplot(aes(r, value, group = interaction(r, method), fill = method)) +
   geom_boxplot() +
   facet_wrap(~stat, scales = "free") +
   scale_fill_manual(values = my_colors) +
-  theme(legend.position = c(0.55, 0.1),
-        legend.title = element_blank())
+  theme(legend.title = element_blank(),
+        legend.position = c(0.1, 0.9),
+        legend.direction = "horizontal")
 ```
 
 

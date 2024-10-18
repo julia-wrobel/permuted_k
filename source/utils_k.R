@@ -9,20 +9,24 @@ get_k = function(ppp_obj,
   ################################################################################
   ################################################################################
   # estimate K using tranlational correction
-  tic()
-  k = Kcross(ppp_obj, i = "immune", j = "immune",
-             r = rvec,
-             correction = c("trans"))
-  time_k = toc()
-
-  # pull vector of r values
-  #rvec = k$r
+  if(biv){
+    tic()
+    k = Kcross(ppp_obj, i = "immune1", j = "immune2",
+               r = rvec,
+               correction = c("trans"))
+    time_k = toc()
+  }else{
+    tic()
+    k = Kcross(ppp_obj, i = "immune", j = "immune",
+               r = rvec,
+               correction = c("trans"))
+    time_k = toc()
+  }
 
   k = k %>%
     as_tibble() %>%
     mutate(method = "k") %>%
     select(r, csr = theo, trans, method)
-
 
 
   ################################################################################
@@ -106,9 +110,6 @@ get_k = function(ppp_obj,
     mutate(time = rep(times, each = length(rvec)))
 
   return(res)
-
-
-
 }
 
 

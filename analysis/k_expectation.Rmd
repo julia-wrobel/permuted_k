@@ -62,7 +62,7 @@ Here we load and process simulation results. Full simulations involve 36 scenari
 ```{r}
 # load only results for VB and TS
 files = list.files(here::here("output", "univariate_expectation", 
-                              "varyAbundance_scSim", "20241007"), 
+                              "varyAbundance_scSim", "20241014"), 
 									 full.names =  TRUE)
 
 # call merge_files() defined in utils.R
@@ -80,40 +80,37 @@ times_df = df %>%
          abundance,
          method,
          time) %>%
-  filter(r == 0) %>%
+  filter(r == 0.5) %>%
   mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
                                     "kamp_lite"),
                          labels = c("K", "Kinhom","perm", "KAMP",
-                                    "KAMP lite")),
-         lambda_m = abundance * lambda_n) %>%
-  group_by(method, type, lambda_n, lambda_m) %>%
+                                    "KAMP lite"))) %>%
+  group_by(method, type, lambda_n, abundance) %>%
   summarize(time = median(time)) %>%
   ungroup() 
 
-# degree of clustering
-doc_df = df %>%
-  mutate(lambda_m = abundance * lambda_n)
-  select(r, iter, type, lambda_m,
-         lambda_n,
-         method, csr, trans) %>%
-  mutate(value = trans-csr) %>%
-  mutate(method = factor(method,
+df = df %>%
+  filter((type %in% c("hom", "inhom") & r == 0.5) | (type %in% c("homClust", "inhomClust") & r == 1.25),
+         lambda_n != 2000) %>%
+  mutate(abundance = factor(abundance),
+         value = trans-csr)  %>%
+  filter(value < 25) %>%
+    mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
                                     "kamp_lite"),
                          labels = c("K", "Kinhom","perm", "KAMP",
                                     "KAMP lite")),
-         #type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
-          #                  labels = c("homogeneous",
-           #                            "inhomogeneous",
-            #                           "homogeneous + clustered",
-             #                          "inhomogeneous + clustered"))
-         )
-
-
-
+         type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
+                            labels = c("homogeneous",
+                                       "inhomogeneous",
+                                       "homogeneous + clustered",
+                                       "inhomogeneous + clustered")),
+         lambda_n = str_c("lambda[n]: ", lambda_n),
+         lambda_n = factor(lambda_n, levels = c("lambda[n]: 1000", "lambda[n]: 2000",
+                                                "lambda[n]: 5000", "lambda[n]: 10000"))) 
 ```
 
 ## Degree of clustering
@@ -122,36 +119,79 @@ doc_df = df %>%
 
 
 ```{r}
-doc_df %>%
-  filter(lambda_n == 5000, r == unique(doc_df$r)[206]) %>%
-  mutate(abundance = factor(abundance))  %>%
+
+p_hom = df %>%
+    filter(type == "homogeneous",
+         value < .5, value > -.5
+         ) %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
   labs(x = "abundance",
-       y = "degree of clustering") +
+       y = "degree of clustering",
+       title = "Homogeneous") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
-  theme(legend.position = "none",
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = c(0.6, 0.2),
+        legend.direction = "horizontal",
         legend.title = element_blank()) +
-  facet_wrap(~type, scales = "free")
-```
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
 
 
-
-```{r}
-df %>%
-  filter(lambda_n == 1000, r == unique(df$r)[206]) %>%
-  mutate(abundance = factor(abundance))  %>%
-  ggplot(aes(abundance, trans-csr, group = interaction(abundance, method), fill = method)) +
+p_inhom = df %>%
+    filter(type == "inhomogeneous",
+         value < .5, value > -.4
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
   labs(x = "abundance",
-       y = "degree of clustering") +
+       y = "degree of clustering",
+       title = "Inhomogeneous") +
   theme_minimal() +
-  #scale_fill_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
   theme(legend.position = "none",
         legend.title = element_blank()) +
-  facet_wrap(~type, scales = "free")
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+phomClust = df %>%
+    filter(type == "homogeneous + clustered",
+         value < 10
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Homogeneous + clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+pinhomClust = df %>%
+    filter(type == "inhomogeneous + clustered",
+         value < 7.5
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous + clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+
+
 ```
+
+
+
 
 
 
@@ -161,31 +201,48 @@ df %>%
 ```{r}
 p_times = times_df %>%
   filter(type == "hom") %>%
-  mutate(lambda_m = factor(lambda_m),
+  mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n,
                            labels = c("lambda[n]: 1000",
                                       "lambda[n]: 2000",
                                       "lambda[n]: 5000",
                                       "lambda[n]: 10000"))) %>%
-  ggplot(aes(lambda_m, log(time), color = method, 
-             group = interaction(lambda_m, method))) +
+  ggplot(aes(abundance, log(time), color = method, 
+             group = interaction(abundance, method), linetype = method)) +
   geom_point() +
   theme_minimal() + 
   theme(legend.position = "top",
         legend.title = element_blank()) +
-  geom_line(aes(group = method)) +
+  geom_line(aes(group = method), linewidth = 1.25) +
+  geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
   scale_color_manual(values = my_colors) +
-  labs(x = TeX("$lambda_m$"),
+  labs(x = "abundance",
        y = "median log(seconds)") +
-  facet_wrap(~lambda_n, labeller = label_parsed, scales= "free")
+  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
   
 ```
 
 
 
 
-```{r fig_sim_expectation, fig.width=10, fig.height=5}
-p_doc / p_times
+
+```{r fig_sim_expectation2, fig.width=10, fig.height=12}
+
+(p_hom+p_inhom)/(phomClust+pinhomClust)/p_times
+
+```
+
+
+```{r fig_sim_expectation, fig.width=10, fig.height=8}
+
+(p_hom+p_inhom)/(phomClust+pinhomClust)
+
+```
+
+```{r fig_sim_comp, fig.height=3}
+
+p_times
+
 ```
 
 
