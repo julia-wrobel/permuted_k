@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-360%50
+#SBATCH --array=1-528%10
 #SBATCH --job-name=univariate_variance_job
 #SBATCH --partition=wrobel,encore
 #SBATCH --output=univariate_variance.out

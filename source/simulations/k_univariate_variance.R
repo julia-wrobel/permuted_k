@@ -45,8 +45,8 @@ n = c(1000, 2000, 5000, 10000)
 abundance = c(0.01, 0.1, 0.2)
 type = c("hom", "inhom", "homClust", "inhomClust")
 nperm = 1000
-seed_start = 1000
-N_iter = 1000
+seed_start = 2000
+N_iter = 1100
 maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
@@ -95,7 +95,7 @@ for(i in 1:100){
 
   # simulate data
   if(type %in% c("hom", "inhom")){
-    ppp_obj <- mxsim_univariate(n, abundance, type)
+    ppp_obj <- mxsim(n, abundance, type)
   }else{
     ppp_obj <- sim_scSpatial(n, abundance, type)
   }

@@ -1,0 +1,238 @@
+---
+title: "simulation results"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+# Overview
+
+This file loads data objects stored from simulations and produces figures for the paper. Libraries and code are sourced below. 
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(viridis)
+library(spatstat.random)
+library(patchwork)
+library(ggbreak)
+library(latex2exp)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+
+my_colors <- c(
+  "K" = "#440154",
+  "Kinhom" = "#414487",
+  "perm" = "#2A788E",
+  "KAMP" = "#7AD151",
+  "KAMP lite" = "#FDE725"
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Source code
+
+Source file for consolidating simulations
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+# Expectation
+
+## Clean and process simulation data
+
+Here we load and process simulation results. Full simulations involve 36 scenarios with 50 simulated datasets each.
+
+
+```{r}
+# load only results for VB and TS
+files = list.files(here::here("output", "bivariate_expectation", 
+                              "varyAbundance_scSim", "20241018"), 
+									 full.names =  TRUE)
+
+# call merge_files() defined in utils.R
+df = map_dfr(files, merge_files)
+
+```
+
+
+
+
+```{r}
+# make comp times dataset
+times_df = df %>%
+  select(r, iter, type, lambda_n,
+         abundance,
+         method,
+         time) %>%
+  filter(r == 0.5) %>%
+  mutate(method = factor(method,
+                         levels = c("k", "kinhom", "perm", 
+                                    "kamp",  
+                                    "kamp_lite"),
+                         labels = c("K", "Kinhom","perm", "KAMP",
+                                    "KAMP lite"))) %>%
+  group_by(method, type, lambda_n, abundance) %>%
+  summarize(time = median(time)) %>%
+  ungroup() 
+
+df = df %>%
+  filter((type %in% c("hom", "inhom") & r == 0.5) | (type %in% c("homClust", "inhomClust") & r == 1.25),
+         lambda_n != 2000
+         ) %>%
+  mutate(abundance = factor(abundance),
+         value = trans-csr)  %>%
+  filter(value < 25) %>%
+    mutate(method = factor(method,
+                         levels = c("k", "kinhom", "perm", 
+                                    "kamp",  
+                                    "kamp_lite"),
+                         labels = c("K", "Kinhom","perm", "KAMP",
+                                    "KAMP lite")),
+         type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
+                            labels = c("homogeneous",
+                                       "inhomogeneous",
+                                       "homogeneous + clustered",
+                                       "inhomogeneous + clustered")),
+         lambda_n = str_c("lambda[n]: ", lambda_n),
+         lambda_n = factor(lambda_n, levels = c("lambda[n]: 1000", "lambda[n]: 2000",
+                                                "lambda[n]: 5000", "lambda[n]: 10000")))  %>%
+  filter(method != "Kinhom")
+```
+
+## Degree of clustering
+
+
+
+
+```{r}
+
+p_hom = df %>%
+    filter(type == "homogeneous",
+         value < .5, value > -.5
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Homogeneous") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = c(0.6, 0.1),
+        legend.direction = "horizontal",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+
+p_inhom = df %>%
+    filter(type == "inhomogeneous",
+         value < 0.8, 
+         value > -.4
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+phomClust = df %>%
+    filter(type == "homogeneous + clustered",
+         value < 10
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Homogeneous + clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+pinhomClust = df %>%
+    filter(type == "inhomogeneous + clustered",
+         value < 10
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous + clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+
+
+```
+
+
+
+
+
+
+## Computation time
+
+
+```{r}
+p_times = times_df %>%
+  filter(type == "hom") %>%
+  mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n,
+                           labels = c("lambda[n]: 1000",
+                                      "lambda[n]: 2000",
+                                      "lambda[n]: 5000",
+                                      "lambda[n]: 10000"))) %>%
+  ggplot(aes(abundance, log(time), color = method, 
+             group = interaction(abundance, method), linetype = method)) +
+  geom_point() +
+  theme_minimal() + 
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  geom_line(aes(group = method), linewidth = 1.25) +
+  geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
+  scale_color_manual(values = my_colors) +
+  labs(x = "abundance",
+       y = "median log(seconds)") +
+  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
+  
+```
+
+
+
+
+
+```{r supp_expectation_biv, fig.width=12, fig.height=12}
+
+(p_hom+p_inhom)/(phomClust+pinhomClust)/p_times
+
+```
+
+

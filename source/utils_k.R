@@ -155,8 +155,7 @@ get_k_power = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
   ################################################################################
   # aggregate data
   res = bind_rows(kamp, kamplite) %>%
-    mutate(k_trans = rep(k$trans, times = 2),
-           time = rep(times, each = length(rvec)))
+    mutate(time = rep(times, each = length(rvec)))
 
   return(res)
 
@@ -223,6 +222,16 @@ get_k_power_permOnly = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1), nperm = 1000
   res = kperm %>%
     mutate(khat = rep(k$trans, times = 1),
            time = rep(times, each = length(rvec)))
+
+
+  res2 = res %>%
+    mutate(Z = (khat- expectation) / sqrt(var),
+           pvalue = pnorm(-Z),
+           method = "kperm approx")
+
+  res = bind_rows(res, res2) %>%
+    select(r, khat, expectation, var, Z, pvalue, method, time)
+
 
   return(res)
 

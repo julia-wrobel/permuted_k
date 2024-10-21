@@ -20,7 +20,6 @@ library(tidyverse)
 library(viridis)
 library(spatstat.random)
 library(patchwork)
-library(ggbreak)
 library(latex2exp)
 
 knitr::opts_chunk$set(echo = TRUE,
@@ -55,7 +54,7 @@ source(here::here("source", "utils.R"))
 # Variance
 
 ```{r}
-files = list.files(here::here("output", "univariate_variance"),
+files = list.files(here::here("output", "bivariate_variance"),
                    full.names =  TRUE, recursive = TRUE, pattern = ".RDA")
 
 df = map_dfr(files, merge_files, variance = TRUE)
@@ -66,36 +65,11 @@ df = map_dfr(files, merge_files, variance = TRUE)
 Data cleaning
 
 ```{r}
-# dfp1 = df %>% mutate(z = (khat-expectation) / sqrt(var),
-#          pvalue2 = pnorm(-z),
-#          pvalue = ifelse(method == "kperm", pvalue, pvalue2)) %>%
-#   select(iter, lambda_n, abundance, type, r, method, pvalue) %>%
-#   filter(r %in% c(0.25, 0.5)) %>%
-#   pivot_wider(names_from = method, values_from = pvalue) %>%
-#   rename(kperm_prop = kperm)
-# 
-# 
-# dfp2 = df %>% filter(r %in% c(0.25, 0.5),
-#               method == "kperm") %>%
-#   mutate(z = (khat-expectation) / sqrt(var),
-#          pvalue2 = pnorm(-z),
-#          pvalue = ifelse(method == "kperm", pvalue, pvalue2)) %>%
-#   select(iter, lambda_n, abundance, type, r,  kperm = pvalue2)
-# 
-# 
-# df = left_join(dfp1, dfp2) %>%
-#   pivot_longer(kamp:kperm_prop, names_to = "method", values_to = "pvalue") %>%
-#   mutate(method = factor(method, levels = c("kperm", "kperm_prop", "kamp", "kamplite"),
-#                          labels = c("perm", "perm proportion", "KAMP", "KAMP lite")))
-# 
 
 df = df %>%
   filter(r != 0) %>%
-  #select(r, iter, type, scenario, contains("lambda"), abundance, method, time, pvalue, var, expectation) %>%
-  mutate(method = factor(method, levels = c("kperm", "kamp", "kamplite"),
-                         labels = c("perm", "KAMP", "KAMP lite")),
-         z = (khat-expectation) / sqrt(var),
-         pvalue = pnorm(-z))
+  mutate(method = factor(method, levels = c("kperm", "kperm approx", "kamp", "kamplite"),
+                         labels = c("perm", "perm approx", "KAMP", "KAMP lite")))
   
 ```
 
@@ -113,7 +87,6 @@ First look at scenarios with no true clustering. Calculating P(reject Ho|Ho True
 df_type1 = df %>%
   filter(type %in% c("hom"),
          ) %>%
-  #filter(method %in% c("perm1k", "perm100", "perm10k")) %>%
   group_by(r, type, method, lambda_n, abundance) %>%
   summarize(type1_error = sum(pvalue<= 0.05)/n(),
             n_sim = n()) %>%
@@ -173,7 +146,7 @@ power = power_df %>%
 
 
 
-```{r fig_sim_power, fig.height = 6}
+```{r supp_power_biv, fig.height = 6}
 type1/power
 ```
 
