@@ -69,11 +69,24 @@ Data cleaning
 df = df %>%
   filter(r != 0) %>%
   mutate(method = factor(method, levels = c("kperm", "kperm approx", "kamp", "kamplite"),
-                         labels = c("perm", "perm approx", "KAMP", "KAMP lite")))
+                         labels = c("perm", "perm approx", "KAMP", "KAMP lite"))) %>%
+  filter(method != "perm approx")
   
 ```
 
 
+
+
+```{r}
+
+df %>%
+  filter(type %in% c("hom", "homClust"), abundance > 0.01) %>%
+  group_by(abundance, lambda_n, type, r) %>%
+  summarize(n = mean(n),
+            m1 = mean(m1),
+            m2 = mean(m2)) %>%
+  ungroup() %>% print(n = 100)
+```
 
 
 
@@ -97,8 +110,7 @@ df_type1 %>%
 
 
 type1 = df_type1 %>%
-  filter(type == "hom",
-         r == .25) %>%
+  filter(r == .25) %>%
   mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, type1_error, group = method,
@@ -129,6 +141,10 @@ power_df = df %>%
   ungroup() %>%
     mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n))
+
+
+power_df %>%
+  arrange(n_sim)
 
 power = power_df %>%
   ggplot(aes(lambda_n, power, group = method,

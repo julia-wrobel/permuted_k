@@ -134,7 +134,7 @@ pp_obj = ppp(ovarian[["x"]], ovarian[["y"]], window = w, marks = ovarian[[marksv
 ## Expectation
 ################################################################################
 
-k_expectation = get_k(pp_obj, rvec = rvalues)
+k_expectation = get_k(pp_obj, rvec = rvalues, nperm = 1000)
 
 ################################################################################
 ## Variance

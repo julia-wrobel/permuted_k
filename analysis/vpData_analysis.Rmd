@@ -121,7 +121,7 @@ dfp = left_join(dfp2, dfp)
 
 ## Survival analysis
 
-Do across radii. Computing RESI is computationally slow.
+Do across radii. 
 
 ```{r}
 # calculate abundance of immune cells
@@ -216,6 +216,7 @@ Computation times for expectation.
 times_df %>%
   group_by(method) %>%
   summarize(mean = mean(time),
+            median = median(time),
             max_seconds = max(time),
             "total (minutes)" = sum(time)/60) %>%
   ungroup() %>%
@@ -285,10 +286,10 @@ plot_k = function(idnum){
     geom_line(linewidth = 1.25) +
     scale_colour_manual(values = c("darkred", "#440154"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+                                   theo = TeX("$pi r^2$"))) +
     scale_linetype_manual(values = c(1, 2),
                           labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+                                   theo = TeX("$\\pi r^2$"))) +
     labs(y = TeX("K(r)")) +
     theme(legend.position = c(.2,.75),
           legend.title=element_blank(),
@@ -306,12 +307,12 @@ plot_k = function(idnum){
     geom_line(linewidth = 1.25) +
     scale_colour_manual(values = c("darkred", "#7AD151", "#440154"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   epd = TeX("$CSR_{KAMP}$"),
-                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+                                   epd = TeX("$KAMP$"),
+                                   theo = TeX("$\\pi r^2$"))) +
         scale_linetype_manual(values = c(1, 4, 2),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   epd = TeX("$CSR_{KAMP}$"),
-                                   theo = TeX("$CSR_{\\pi r^2}$"))) +
+                                   epd = TeX("$KAMP$"),
+                                   theo = TeX("$\\pi r^2$"))) +
     labs(y = TeX("K(r)")) +
     theme(legend.position = c(.25,.7),
           legend.title=element_blank(),
@@ -332,19 +333,59 @@ Generate plots: before expected value statistic
 
 
 
-```{r fig_3subjs, fig.height = 6}
+```{r fig_3subjs, fig.height = 6, fig.width = 12}
 high_k = "030120 P9HuP6 TMA 1-B_Core[1,7,E]_[14474,48365].im3"
 low_k = "030120 P9HuP6 TMA 1-A_Core[1,6,C]_[10353,49826].im3"
 patchy_k = "030120 P9HuP6 TMA 1-A_Core[1,1,C]_[10162,38841].im3"
-
+patchy_k2 = "030120 P9HuP6 TMA 1-B_Core[1,9,G]_[18855,52556].im3"
 
 high = plot_k(high_k)
 low = plot_k(low_k)
 patchy = plot_k(patchy_k)
+patchy_noClust = plot_k(patchy_k2)
 
 
-(high[[1]] + low[[1]] + patchy[[1]]) / (high[[2]] + low[[2]] + patchy[[2]])
+wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[2]], low[[2]], patchy[[2]], patchy_noClust[[2]]), ncol = 4)
 
+```
+
+
+```{r, eval = FALSE}
+library(plotly)
+p = dfp %>%
+  filter(r <=150, method %in% c("k", "kepd"),
+         round(r) %in% c( 125)) %>%
+  select(sample_id, r, method, DoC) %>%
+  pivot_wider(names_from = method, values_from = DoC) %>%
+  # sound k or divide by 1000 to make this more manageable 
+  mutate(k = round(k/1000),
+         kepd = round(kepd/1000)) %>%
+  mutate(diff = k - kepd) %>%
+  filter(diff > 0) %>%
+  ggplot(aes(kepd, diff, color = sample_id)) +
+  geom_abline(slope = 1, intercept = 0) +
+  geom_point()
+
+
+ggplotly(p)
+
+
+ids = dfp %>%
+  filter(r <=150, method %in% c("k", "kepd"),
+         round(r) %in% c( 125)) %>%
+  select(sample_id, r, method, DoC) %>%
+  pivot_wider(names_from = method, values_from = DoC) %>%
+  # sound k or divide by 1000 to make this more manageable 
+  mutate(k = round(k/1000),
+         kepd = round(kepd/1000))%>%
+  filter(kepd %in% c(16, -43, -42, 2, 24, 8, 7, 3, 4)) %>%
+  pull(sample_id)
+
+patchy2 = plot_k(ids[26])
+
+# 26!
+
+patchy2[[1]] / patchy2[[3]]
 ```
 
 
@@ -355,10 +396,11 @@ patchy = plot_k(patchy_k)
 
 Same as Figure 1, but including EPD CSR value
 
-```{r fig_3subjs_epd, fig.height = 6}
+```{r fig_3subjs_epd, fig.height = 6, fig.width = 12}
 
 
-(high[[1]] + low[[1]] + patchy[[1]]) / (high[[3]] + low[[3]] + patchy[[3]])
+wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[3]], low[[3]], patchy[[3]], patchy_noClust[[3]]), ncol = 4)
+
 
 ```
 
