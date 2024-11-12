@@ -455,6 +455,22 @@ cph = cph %>%
 
 
 
+Think about how to expand this plot. Also want areas of significance.
+
+```{r}
+cph %>%
+  filter(term == "doc") %>%
+  ggplot(aes(r, resi, group = method, color = method)) +
+  geom_line() +
+  geom_line(aes(y = upper), linetype = 2) +
+  geom_line(aes(y = lower), linetype = 2)
+```
+
+
+
+
+
+
 ```{r fig_vpData_survival, fig.width = 9}
 
 p_df = cph %>%
