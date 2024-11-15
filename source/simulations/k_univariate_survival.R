@@ -8,6 +8,7 @@
 
 #suppressPackageStartupMessages()
 
+suppressPackageStartupMessages(library(MASS))
 suppressPackageStartupMessages(library(spatstat.random))
 suppressPackageStartupMessages(library(spatstat.geom))
 suppressPackageStartupMessages(library(spatstat.explore))
@@ -18,7 +19,7 @@ suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(tictoc))
 suppressPackageStartupMessages(library(scSpatialSIM))
 suppressPackageStartupMessages(library(survival))
-suppressPackageStartupMessages(library(MASS))
+
 
 
 
