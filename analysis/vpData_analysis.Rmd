@@ -15,6 +15,7 @@ highlighter: highlight.js
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(survival)
+library(pec)
 library(patchwork)
 library(broom)
 library(viridis)
@@ -205,6 +206,38 @@ clinical %>%
   ungroup() %>%
   select(stat, min, q25, median, q75, max)
 
+```
+
+
+## Out of sample survival prediction
+
+Here we do cross validation to get out of sample predictions using the model with K and KAMP, and assess predictive performance.  Choosing 3 radii.
+
+```{r}
+filter(clinical, r == 25)
+  
+
+mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + epd, 
+              data = filter(clinical, r == 50), x = TRUE, y = TRUE)
+
+mod_k = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
+              data = filter(clinical, r == 50), x = TRUE, y = TRUE)
+
+
+
+
+# Compute cross-validated Brier scores
+# Use pec to create prediction error curves with cross-validation
+brier_scores <- pec(
+  object = list("KAMP" = mod, "K" = mod_k),
+  formula = Surv(survival_time, event) ~ age + stage + p_immune + epd,
+  data =  filter(clinical, r == 50),
+  times = seq(20, 120, by = 10), # Specify time points for evaluation
+  exact = TRUE,
+  splitMethod = "cv10"
+)
+
+plot(brier_scores, xlab = "Time", ylab = "Brier Score", main = "Cross-Validated Brier Scores")
 ```
 
 

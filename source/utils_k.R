@@ -239,6 +239,119 @@ get_k_power_permOnly = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1), nperm = 1000
 
 
 
+## function for calculating K in simulated data. Takes in full ppp object
+## calculates time for the fperm step.
+## can then apply this to a list of ppp objects
+get_k_survival = function(n, abundance,
+                 rvec = c(0, .05, .075,.1, .15, .2),
+                 id){
+  ################################################################################
+  ################################################################################
+  # simulate data
+  ppp_obj <- sim_scSpatial(n, abundance, type = "inhomClust")
+
+
+  # estimate K using tranlational correction
+  tic()
+  k = Kcross(ppp_obj, i = "immune", j = "immune",
+             r = rvec,
+             correction = c("trans"))
+  time_k = toc()
+
+  k = k %>%
+    as_tibble() %>%
+    mutate(method = "k") %>%
+    select(r, csr = theo, trans, method)
+
+
+  ################################################################################
+  ################################################################################
+  # calculate KAMP statistic
+  tic()
+  kamp = Kest(ppp_obj,
+              r = rvec,
+              correction = c("trans")) %>%
+    as_tibble() %>%
+    mutate(method = "kamp",
+           csr = trans,
+           trans = k$trans) %>%
+    select(r, csr, trans, method)
+  time_kamp = toc()
+
+  ################################################################################
+  ################################################################################
+  # aggregate data
+  res = bind_rows(k, kamp)  %>%
+    mutate(id = id) %>%
+    filter(r != 0) %>%
+    mutate(doc = trans-csr) %>%
+    select(id, r, method, doc) %>%
+    pivot_wider(names_from = method, values_from = doc)
+
+  ################################################################################
+  ################################################################################
+  # generate survival data
+
+  return(res)
+}
+
+
+get_coxPH = function(n_subj, beta_val, rho, k_df){
+  beta_vec <- c(beta_val, 1)    # Coefficients for covariates
+  lambda <- 0.01          # Baseline hazard rate
+  censoring_rate <- 0.3   # Proportion of censored observations
+
+
+  # X1 based on KAMP, so that is the true value
+  X1 = k_df$kamp
+
+  if(rho != 0){
+    X1_std = scale(X1)
+
+    # use Cholesky decomposition to generate correlated covariates
+    cov_matrix = matrix(c(1, rho,rho, 1), nrow = 2)
+    X2 =  rnorm(n_subj)
+
+    X = cbind(X1_std, X2)
+    X2 = (X %*% chol(cov_matrix))[,2]
+  }else{
+    X2 =  rnorm(n_subj)
+  }
+  X <- cbind(X1, X2)
+  eta <- X %*% beta_vec
+
+  # Simulate survival times based on the exponential distribution
+  # Hazard function: h(t|X) = h0(t) * exp(eta)
+  # Survival times are drawn from the survival function
+  # S(t|X) = exp(-H0(t) * exp(eta)), where H0(t) is the cumulative baseline hazard
+  U <- runif(n_subj)
+  T <- -log(U) / (lambda * exp(eta))  # Inverse transform sampling
+
+  # Simulate censoring times
+  C <- rexp(n_subj, rate = censoring_rate)
+
+  # Observed times and censoring indicators
+  observed_time <- pmin(T, C)
+  status <- as.numeric(T <= C)  # 1 if event occurred, 0 if censored
+
+  # Create a data frame
+  cox_df <- data.frame(
+    time = observed_time,
+    status = status,
+    kamp = k_df$kamp,
+    k = k_df$k,
+    X2 = X2
+  )
+
+  # run cox models for both k and kamp
+  mod_k = coxph(Surv(time, status) ~ k + X2, data = cox_df)
+  mod_kamp = coxph(Surv(time, status) ~ kamp + X2, data = cox_df)
+
+  # extract beta, se beta, CI, p-value, which model it is from
+  bind_rows(tidy(mod_k, conf.int = TRUE) %>% filter(term != "X2"),
+            tidy(mod_kamp, conf.int = TRUE) %>% filter(term != "X2"))
+}
+
 
 
 
