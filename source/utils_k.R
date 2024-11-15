@@ -296,8 +296,8 @@ get_k_survival = function(n, abundance,
 }
 
 
-get_coxPH = function(n_subj, beta_val, rho, k_df){
-  beta_vec <- c(beta_val, 1)    # Coefficients for covariates
+get_coxPH = function(num_subj, beta, rhoval, k_df){
+  beta_vec <- c(beta, 1)    # Coefficients for covariates
   lambda <- 0.01          # Baseline hazard rate
   censoring_rate <- 0.3   # Proportion of censored observations
 
@@ -305,17 +305,17 @@ get_coxPH = function(n_subj, beta_val, rho, k_df){
   # X1 based on KAMP, so that is the true value
   X1 = k_df$kamp
 
-  if(rho != 0){
+  if(rhoval != 0){
     X1_std = scale(X1)
 
     # use Cholesky decomposition to generate correlated covariates
-    cov_matrix = matrix(c(1, rho,rho, 1), nrow = 2)
-    X2 =  rnorm(n_subj)
+    cov_matrix = matrix(c(1, rhoval,rhoval, 1), nrow = 2)
+    X2 =  rnorm(num_subj)
 
     X = cbind(X1_std, X2)
     X2 = (X %*% chol(cov_matrix))[,2]
   }else{
-    X2 =  rnorm(n_subj)
+    X2 =  rnorm(num_subj)
   }
   X <- cbind(X1, X2)
   eta <- X %*% beta_vec
@@ -324,11 +324,11 @@ get_coxPH = function(n_subj, beta_val, rho, k_df){
   # Hazard function: h(t|X) = h0(t) * exp(eta)
   # Survival times are drawn from the survival function
   # S(t|X) = exp(-H0(t) * exp(eta)), where H0(t) is the cumulative baseline hazard
-  U <- runif(n_subj)
+  U <- runif(num_subj)
   T <- -log(U) / (lambda * exp(eta))  # Inverse transform sampling
 
   # Simulate censoring times
-  C <- rexp(n_subj, rate = censoring_rate)
+  C <- rexp(num_subj, rate = censoring_rate)
 
   # Observed times and censoring indicators
   observed_time <- pmin(T, C)

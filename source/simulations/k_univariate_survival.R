@@ -9,6 +9,7 @@
 #suppressPackageStartupMessages()
 
 suppressPackageStartupMessages(library(MASS))
+suppressPackageStartupMessages(library(broom))
 suppressPackageStartupMessages(library(spatstat.random))
 suppressPackageStartupMessages(library(spatstat.geom))
 suppressPackageStartupMessages(library(spatstat.explore))
@@ -19,7 +20,6 @@ suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(tictoc))
 suppressPackageStartupMessages(library(scSpatialSIM))
 suppressPackageStartupMessages(library(survival))
-
 
 
 
@@ -48,11 +48,11 @@ n = c(5000)
 abundance = c(0.1)
 type = c("inhomClust")
 beta_val = c(0, -1, 0.5, 2)
-rho = c(0, 5) # correlation of covariates
+rho = c(0, .5) # correlation of covariates
 seed_start = 2000
 N_iter = 1000
 n_subj = 100
-maxiter = (seq(1, N_iter, by = 100)-1) + 100
+maxiter = (seq(1, N_iter, by = 10)-1) + 10
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
@@ -60,7 +60,7 @@ params = expand.grid(seed_start = seed_start,
                      abundance = abundance,
                      beta_val = beta_val,
                      rho = rho,
-                     maxiter = (seq(1, N_iter, by = 100)-1) + 100) %>%
+                     maxiter = (seq(1, N_iter, by = 10)-1) + 10) %>%
   mutate(m = n * abundance) %>%
   filter(m >=5)
 
@@ -70,11 +70,13 @@ dir.create(file.path(here::here("output", "univariate_survival"), Date), showWar
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 1
-  N_iter = 2
+  scenario = 7
+  it = 2
+  n_subj = 20
 }else{
   # defined from batch script params
   scenario <- as.numeric(commandArgs(trailingOnly=TRUE))
+  it = 10
 }
 
 
@@ -94,10 +96,10 @@ rho = params$rho[scenario]
 SEED.START = params$seed_start[scenario]
 maxiter = params$maxiter[scenario]
 
-iter_vec = (maxiter-99):maxiter
+iter_vec = (maxiter-9):maxiter
 
-results = vector("list", length = 100)
-for(i in 1:100){
+results = vector("list", length = it)
+for(i in 1:it){
   # set seed
   seed.iter = (SEED.START - 1)*N_iter + iter_vec[i]
   set.seed(seed.iter)
