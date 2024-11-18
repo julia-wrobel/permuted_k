@@ -112,7 +112,7 @@ for(i in 1:it){
   # Calculate Ripley's K and fperm statistics
   k = rnorm(n_subj, mean = 7)
   kamp = rnorm(n_subj)
-  r = rep(1, n_subj)
+  r = 1
   id = 1:n_subj
 
 
