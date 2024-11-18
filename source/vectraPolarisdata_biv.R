@@ -102,7 +102,9 @@ if(doLocal) {
   sample_index <- as.numeric(commandArgs(trailingOnly=TRUE))
   # load preprocessed data
 
-  load(file = here::here("data", "processed_ovarian_data.Rda")) %>%
+  load(file = here::here("data", "processed_ovarian_data.Rda"))
+
+  ovarian = ovarian %>%
     mutate(phenotype = case_when(phenotype_cd19 == "CD19+" ~ "immune1",
                                  phenotype_cd68 == "CD68+" ~ "immune2",
                                  TRUE ~ "other"),
@@ -125,8 +127,8 @@ if(doLocal) {
 ids = unique(ovarian$sample_id)
 
 # exclude ids that have already been analyzed
-#ids_run = str_replace(list.files(here::here("output", "vpData")), "RDA", "im3")
-#ids = setdiff(ids, ids_run)
+ids_run = str_replace(list.files(here::here("output", "VPdata_bivariate")), "RDA", "im3")
+ids = setdiff(ids, ids_run)
 
 
 ovarian = ovarian %>%
