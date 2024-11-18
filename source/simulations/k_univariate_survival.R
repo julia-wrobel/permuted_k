@@ -47,11 +47,11 @@ source(here::here("source", "simulate_scSpatialSim.R"))
 n = c(5000)
 abundance = c(0.1)
 type = c("inhomClust")
-beta_val = c(0, 0.1, 0.5, 2)
+beta_val = c(-2,-0.5, 0, 0.5, 2)
 rho = c(-0.5, -0.1, 0., 0.1, .5) # correlation of covariates
 seed_start = 2000
 N_iter = 1000
-n_subj = c(100, 500, 1000)
+n_subj = c(100, 500, 1000, 2000)
 maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,

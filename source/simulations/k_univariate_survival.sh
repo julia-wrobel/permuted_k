@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-600%40
+#SBATCH --array=1-1000%50
 #SBATCH --job-name=surv_job
 #SBATCH --partition=encore
 #SBATCH --output=surv.out

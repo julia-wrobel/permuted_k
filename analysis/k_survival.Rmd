@@ -74,12 +74,14 @@ df = map_dfr(files, merge_files)
 ```{r}
 
 df = df %>%
-    mutate(method = factor(term,
+    mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
                                     "kamp_lite"),
                          labels = c("K", "Kinhom","perm", "KAMP",
-                                    "KAMP lite"))) 
+                                    "KAMP lite")),
+           n_subj = factor(n_subj),
+           term = ifelse(term %in% c("k", "kamp"), "doc", term)) 
 ```
 
 
@@ -99,78 +101,73 @@ _ Check if mean of K is in the right direction
 
 df %>%
   group_by(method) %>%
-  mutate(bias = estimate - beta_val) %>%
+  mutate(bias = case_when(term == "doc" ~ estimate - beta_val,
+                          term == "X2" ~ estimate + 1,
+                          TRUE ~ estimate - 1)) %>%
   ungroup() %>%
-  filter(rho == 0.5) %>%
+  filter(#rho == -0.5, 
+         n_subj == 500) %>%
   mutate(beta = factor(beta_val)) %>%
   ggplot(aes(beta, bias, group = interaction(beta, method), fill = method)) +
   geom_boxplot() +
   labs(x = "beta true",
-       y = "beta est") +
+       y = "bias") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
   theme(legend.position = c(0.6, 0.2),
         legend.direction = "horizontal",
         legend.title = element_blank()) +
-  ylim(-3,3) +
-  facet_wrap(~rho, labeller = label_both) 
-
-
-p_inhom = df %>%
-    filter(type == "inhomogeneous",
-         value < .5, value > -.4
-         ) %>%
-  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
-  geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Inhomogeneous") +
-  theme_minimal() +
-  scale_fill_manual(values = my_colors) +
-  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = "none",
-        legend.title = element_blank()) +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
-
-phomClust = df %>%
-    filter(type == "homogeneous + clustered",
-         value < 10
-         ) %>%
-  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
-  geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Homogeneous + clustered") +
-  theme_minimal() +
-  scale_fill_manual(values = my_colors) +
-  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = "none",
-        legend.title = element_blank()) +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
-
-pinhomClust = df %>%
-    filter(type == "inhomogeneous + clustered",
-         value < 7.5
-         ) %>%
-  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
-  geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Inhomogeneous + clustered") +
-  theme_minimal() +
-  scale_fill_manual(values = my_colors) +
-  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = "none",
-        legend.title = element_blank()) +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
-
-
+  #ylim(-3,3) +
+  facet_grid(rho~term, labeller = label_both) 
 
 ```
 
 
+Power
 
+
+```{r}
+df %>%
+  filter(!is.na(p.value),
+          beta_val != 0, term == "doc") %>%
+  group_by(term, method, n_subj, rho, beta_val) %>%
+  summarize(power = sum(p.value<= 0.05)/n(),
+            n_sim = n()) %>%
+  ungroup() %>%
+  ggplot(aes(n_subj, power, group = method,
+             color = method, linetype = method)) +
+  geom_point(size = 2) +
+  scale_color_manual(values = my_colors) +
+  geom_line(linewidth = 1.25) +
+  #labs(y = "Type 1 error") +
+  geom_hline(yintercept = 0.05, linetype = 4) +
+  #theme(legend.position = "none") +
+  facet_grid(beta_val~rho,  labeller = label_both)
+```
+
+
+Type 1 error
+
+```{r}
+df %>%
+  filter(!is.na(p.value),
+         beta_val == 0, term == "doc") %>%
+  group_by(term, method, n_subj, rho, beta_val) %>%
+  summarize(type1 = sum(p.value<= 0.05)/n(),
+            n_sim = n()) %>%
+  ungroup() %>%
+  ggplot(aes(n_subj, type1, group = method,
+             color = method, linetype = method)) +
+  geom_point(size = 2) +
+  scale_color_manual(values = my_colors) +
+  geom_line(linewidth = 1.25) +
+  labs(y = "Type 1 error") +
+  geom_hline(yintercept = 0.05, linetype = 4) +
+  #theme(legend.position = "none") +
+  facet_wrap(~rho, ncol = 3, labeller = label_both)
+
+```
 
 
 
