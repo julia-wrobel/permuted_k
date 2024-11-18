@@ -114,8 +114,6 @@ if(doLocal) {
     ungroup() %>%
     filter(tissue_category == "Tumor") %>%
     filter(n_macs >= 3, n_bcells >= 2)
-
-
 }
 
 
