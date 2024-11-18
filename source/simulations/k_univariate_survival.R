@@ -110,10 +110,15 @@ for(i in 1:it){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  kvals = tibble(id = 1:n_subj,
-                 r = 1.25,
-                 k = rnorm(n_subj, 7),
-                 kamp = rnorm(n_subj))
+  k = rnorm(n_subj, mean = 7)
+  kamp = rnorm(n_subj)
+  r = rep(1, n_subj)
+  id = 1:n_subj
+
+
+  kvals = data.frame(id = id, r = r, k = k, kamp = kamp)
+
+
 
   # simulate survival data and fit cox models
   fits = get_coxPH(n_subj, beta_val, rho, kvals)
