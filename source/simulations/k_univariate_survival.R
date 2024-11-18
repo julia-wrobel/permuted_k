@@ -48,7 +48,7 @@ n = c(5000)
 abundance = c(0.1)
 type = c("inhomClust")
 beta_val = c(0, 0.1, 0.5, 2)
-rho = c(0, .5) # correlation of covariates
+rho = c(-0.5, .5) # correlation of covariates
 seed_start = 2000
 N_iter = 1000
 n_subj = c(100, 500, 1000)
@@ -71,9 +71,9 @@ dir.create(file.path(here::here("output", "univariate_survival"), Date), showWar
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 2
+  scenario = 52
   it = 100
-  n_subj = 100
+  n_subj = 500
 }else{
   # defined from batch script params
   scenario <- as.numeric(commandArgs(trailingOnly=TRUE))
@@ -110,14 +110,13 @@ for(i in 1:it){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k = rnorm(n_subj, mean = 7)
   kamp = rnorm(n_subj)
+  k = kamp + rnorm(n_subj, mean = 7)
   r = 1
   id = 1:n_subj
 
 
   kvals = data.frame(id = id, r = r, k = k, kamp = kamp)
-
 
 
   # simulate survival data and fit cox models
@@ -131,6 +130,7 @@ for(i in 1:it){
            type = type,
            abundance = abundance,
            rho = rho,
+           n_subj = n_subj,
            beta_val = beta_val)
 
 

@@ -60,7 +60,7 @@ Here we load and process simulation results. Full simulations involve 36 scenari
 
 ```{r}
 # load only results for VB and TS
-files = list.files(here::here("output", "univariate_survival", "20241115"), 
+files = list.files(here::here("output", "univariate_survival", "20241118"), 
 									 full.names =  TRUE)
 
 # call merge_files() defined in utils.R
@@ -91,7 +91,9 @@ To calculate
 - might want to think about mimicking what the distribution of the measurement error in the real data looks like
 - also want to look at bias in X2 and make x2 have a similar magnitude, direction, and correlation as in the real data
 
-
+- Save n_subj, save values of other betas, add in a beta that is not correlated but associated
+_ Check if mean of K is in the right direction
+- Kamp seems to always be zero? Maybe my code is set up weird.  Add Normal distributed errors to KAMP directly 
 
 ```{r}
 
@@ -99,7 +101,7 @@ df %>%
   group_by(method) %>%
   mutate(bias = estimate - beta_val) %>%
   ungroup() %>%
-  #filter(abs(bias) < 5) %>%
+  filter(rho == 0.5) %>%
   mutate(beta = factor(beta_val)) %>%
   ggplot(aes(beta, bias, group = interaction(beta, method), fill = method)) +
   geom_boxplot() +

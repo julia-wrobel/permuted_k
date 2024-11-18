@@ -241,7 +241,7 @@ get_k_power_permOnly = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1), nperm = 1000
 
 
 get_coxPH = function(num_subj, beta, rhoval, k_df){
-  beta_vec <- c(beta, -1.5)    # Coefficients for covariates
+  beta_vec <- c(beta, -1.5, 1)    # Coefficients for covariates
   lambda <- 0.01          # Baseline hazard rate
   censoring_rate <- 0.3   # Proportion of censored observations
 
@@ -249,19 +249,14 @@ get_coxPH = function(num_subj, beta, rhoval, k_df){
   # X1 based on KAMP, so that is the true value
   X1 = k_df$kamp
 
-  if(rhoval != 0){
-    X1_std = scale(X1)
+  cov_matrix = matrix(c(1, rhoval,rhoval, 1), nrow = 2)
+  X2 =  rnorm(num_subj)
+  X = cbind(X1, X2)
+  X2 = (X %*% chol(cov_matrix))[,2]
 
-    # use Cholesky decomposition to generate correlated covariates
-    cov_matrix = matrix(c(1, rhoval,rhoval, 1), nrow = 2)
-    X2 =  rnorm(num_subj)
+  X3 =  rbinom(num_subj, 1, 0.4)
 
-    X = cbind(X1_std, X2)
-    X2 = (X %*% chol(cov_matrix))[,2]
-  }else{
-    X2 =  rnorm(num_subj)
-  }
-  X <- cbind(X1, X2)
+  X <- cbind(X1, X2, X3)
   eta <- X %*% beta_vec
 
   # Simulate survival times based on the exponential distribution
@@ -288,12 +283,12 @@ get_coxPH = function(num_subj, beta, rhoval, k_df){
   )
 
   # run cox models for both k and kamp
-  mod_k = coxph(Surv(time, status) ~ k + X2, data = cox_df)
-  mod_kamp = coxph(Surv(time, status) ~ kamp + X2, data = cox_df)
+  mod_k = coxph(Surv(time, status) ~ k + X2 + X3, data = cox_df)
+  mod_kamp = coxph(Surv(time, status) ~ kamp + X2 + X3, data = cox_df)
 
   # extract beta, se beta, CI, p-value, which model it is from
-  bind_rows(tidy(mod_k, conf.int = TRUE) %>% filter(term != "X2"),
-            tidy(mod_kamp, conf.int = TRUE) %>% filter(term != "X2"))
+  bind_rows(tidy(mod_k, conf.int = TRUE) %>% mutate(method = "k"),
+            tidy(mod_kamp, conf.int = TRUE) %>% mutate(method = "kamp"))
 }
 
 
