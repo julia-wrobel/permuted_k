@@ -51,7 +51,7 @@ beta_val = c(0, 0.1, 0.5, 2)
 rho = c(0, .5) # correlation of covariates
 seed_start = 2000
 N_iter = 1000
-n_subj = c(100, 500)
+n_subj = c(100, 500, 1000)
 maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
@@ -72,7 +72,7 @@ dir.create(file.path(here::here("output", "univariate_survival"), Date), showWar
 ## define number of simulations and parameter scenario
 if(doLocal) {
   scenario = 2
-  it = 2
+  it = 100
   n_subj = 100
 }else{
   # defined from batch script params
