@@ -241,7 +241,7 @@ get_k_power_permOnly = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1), nperm = 1000
 
 
 get_coxPH = function(num_subj, beta, rhoval, k_df){
-  beta_vec <- c(beta, -1.5, 1)    # Coefficients for covariates
+  beta_vec <- c(beta, -1, 1)    # Coefficients for covariates
   lambda <- 0.01          # Baseline hazard rate
   censoring_rate <- 0.3   # Proportion of censored observations
 
@@ -254,7 +254,11 @@ get_coxPH = function(num_subj, beta, rhoval, k_df){
   X = cbind(X1, X2)
   X2 = (X %*% chol(cov_matrix))[,2]
 
-  X3 =  rbinom(num_subj, 1, 0.4)
+  cov_matrix = matrix(c(1, 0.2,0.2, 1), nrow = 2)
+  X3 =  rnorm(num_subj)
+  X = cbind(X1, X3)
+  X3 = (X %*% chol(cov_matrix))[,2]
+
 
   X <- cbind(X1, X2, X3)
   eta <- X %*% beta_vec
