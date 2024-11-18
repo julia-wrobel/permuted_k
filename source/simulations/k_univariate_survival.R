@@ -90,7 +90,7 @@ if(doLocal) {
 ###############################################################
 n = params$n[scenario]
 abundance = params$abundance[scenario]
-nsubj = params$nsubj[scenario]
+n_subj = params$n_subj[scenario]
 m = n * abundance
 type = params$type[scenario]
 beta_val = params$beta_val[scenario]
