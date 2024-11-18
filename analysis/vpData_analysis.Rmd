@@ -213,12 +213,27 @@ clinical %>%
 
 Here we do cross validation to get out of sample predictions using the model with K and KAMP, and assess predictive performance.  Choosing 3 radii.
 
-```{r}
-filter(clinical, r == 25)
+```{r, eval = FALSE}
+dat = filter(clinical, r == 50) %>%
+  mutate(kerror = k - epd) %>%
+  filter(kerror >=0 ) %>%
+  mutate(kamp_std = (epd -mean(epd))/sd(epd),
+         kerror = log(kerror),
+         kerror_std = (kerror - mean(kerror))/sd(kerror))
   
+hist(dat$kerror)
+hist(dat$epd)
 
-mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + epd, 
-              data = filter(clinical, r == 50), x = TRUE, y = TRUE)
+var(log(dat$epd), na.rm = TRUE)
+var(log(dat$k), na.rm = TRUE)
+
+mean(dat$kerror)
+var(dat$kerror)
+cor(dat$kamp_std, dat$p_immune). # correlation is 0.3
+
+
+mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + log(epd), 
+              data = dat, x = TRUE, y = TRUE)
 
 mod_k = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
               data = filter(clinical, r == 50), x = TRUE, y = TRUE)

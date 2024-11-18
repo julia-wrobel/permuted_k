@@ -47,12 +47,12 @@ source(here::here("source", "simulate_scSpatialSim.R"))
 n = c(5000)
 abundance = c(0.1)
 type = c("inhomClust")
-beta_val = c(0, -1, 0.5, 2)
+beta_val = c(0, 0.1, 0.5, 2)
 rho = c(0, .5) # correlation of covariates
 seed_start = 2000
 N_iter = 1000
-n_subj = 100
-maxiter = (seq(1, N_iter, by = 10)-1) + 10
+n_subj = c(100, 500)
+maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
@@ -60,7 +60,8 @@ params = expand.grid(seed_start = seed_start,
                      abundance = abundance,
                      beta_val = beta_val,
                      rho = rho,
-                     maxiter = (seq(1, N_iter, by = 10)-1) + 10) %>%
+                     n_subj = n_subj,
+                     maxiter = (seq(1, N_iter, by = 100)-1) + 100) %>%
   mutate(m = n * abundance) %>%
   filter(m >=5)
 
@@ -70,13 +71,13 @@ dir.create(file.path(here::here("output", "univariate_survival"), Date), showWar
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 7
+  scenario = 2
   it = 2
-  n_subj = 20
+  n_subj = 100
 }else{
   # defined from batch script params
   scenario <- as.numeric(commandArgs(trailingOnly=TRUE))
-  it = 10
+  it = 100
 }
 
 
@@ -89,6 +90,7 @@ if(doLocal) {
 ###############################################################
 n = params$n[scenario]
 abundance = params$abundance[scenario]
+nsubj = params$nsubj[scenario]
 m = n * abundance
 type = params$type[scenario]
 beta_val = params$beta_val[scenario]
@@ -96,7 +98,7 @@ rho = params$rho[scenario]
 SEED.START = params$seed_start[scenario]
 maxiter = params$maxiter[scenario]
 
-iter_vec = (maxiter-9):maxiter
+iter_vec = (maxiter-99):maxiter
 
 results = vector("list", length = it)
 for(i in 1:it){
@@ -108,11 +110,10 @@ for(i in 1:it){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-
-  kvals = map_dfr(1:n_subj, get_k_survival,
-                  n = n,
-                  abundance = abundance,
-                  rvec = c(0, 1.25))
+  kvals = tibble(id = 1:n_subj,
+                 r = 1.25,
+                 k = rnorm(n_subj, 7),
+                 kamp = rnorm(n_subj))
 
   # simulate survival data and fit cox models
   fits = get_coxPH(n_subj, beta_val, rho, kvals)

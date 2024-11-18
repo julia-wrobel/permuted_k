@@ -1,0 +1,226 @@
+---
+title: "simulation results"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+# Overview
+
+This file loads data objects stored from simulations and produces figures for the paper. Libraries and code are sourced below. 
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(viridis)
+library(spatstat.random)
+library(patchwork)
+library(latex2exp)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+
+my_colors <- c(
+  "K" = "#440154",
+  "Kinhom" = "#414487",
+  "perm" = "#2A788E",
+  "KAMP" = "#7AD151",
+  "KAMP lite" = "#FDE725"
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Source code
+
+Source file for consolidating simulations
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+# Expectation
+
+## Clean and process simulation data
+
+Here we load and process simulation results. Full simulations involve 36 scenarios with 50 simulated datasets each.
+
+
+```{r}
+# load only results for VB and TS
+files = list.files(here::here("output", "univariate_survival", "20241115"), 
+									 full.names =  TRUE)
+
+# call merge_files() defined in utils.R
+df = map_dfr(files, merge_files)
+
+```
+
+
+
+
+```{r}
+
+df = df %>%
+    mutate(method = factor(term,
+                         levels = c("k", "kinhom", "perm", 
+                                    "kamp",  
+                                    "kamp_lite"),
+                         labels = c("K", "Kinhom","perm", "KAMP",
+                                    "KAMP lite"))) 
+```
+
+
+
+To calculate
+
+- mean squared error across true beta values
+- power and type 1 error 
+- might want to think about mimicking what the distribution of the measurement error in the real data looks like
+- also want to look at bias in X2 and make x2 have a similar magnitude, direction, and correlation as in the real data
+
+
+
+```{r}
+
+df %>%
+  group_by(method) %>%
+  mutate(bias = estimate - beta_val) %>%
+  ungroup() %>%
+  #filter(abs(bias) < 5) %>%
+  mutate(beta = factor(beta_val)) %>%
+  ggplot(aes(beta, bias, group = interaction(beta, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "beta true",
+       y = "beta est") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = c(0.6, 0.2),
+        legend.direction = "horizontal",
+        legend.title = element_blank()) +
+  ylim(-3,3) +
+  facet_wrap(~rho, labeller = label_both) 
+
+
+p_inhom = df %>%
+    filter(type == "inhomogeneous",
+         value < .5, value > -.4
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+phomClust = df %>%
+    filter(type == "homogeneous + clustered",
+         value < 10
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Homogeneous + clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+pinhomClust = df %>%
+    filter(type == "inhomogeneous + clustered",
+         value < 7.5
+         ) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous + clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.title = element_blank()) +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+
+
+```
+
+
+
+
+
+
+## Computation time
+
+
+```{r}
+p_times = times_df %>%
+  filter(type == "hom") %>%
+  mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n,
+                           labels = c("lambda[n]: 1000",
+                                      "lambda[n]: 2000",
+                                      "lambda[n]: 5000",
+                                      "lambda[n]: 10000"))) %>%
+  ggplot(aes(abundance, log(time), color = method, 
+             group = interaction(abundance, method), linetype = method)) +
+  geom_point() +
+  theme_minimal() + 
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  geom_line(aes(group = method), linewidth = 1.25) +
+  geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
+  scale_color_manual(values = my_colors) +
+  labs(x = "abundance",
+       y = "median log(seconds)") +
+  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
+  
+```
+
+
+
+
+
+```{r fig_sim_expectation2, fig.width=10, fig.height=12}
+
+(p_hom+p_inhom)/(phomClust+pinhomClust)/p_times
+
+```
+
+
+```{r fig_sim_expectation, fig.width=10, fig.height=8}
+
+(p_hom+p_inhom)/(phomClust+pinhomClust)
+
+```
+
+```{r fig_sim_comp, fig.height=3}
+
+p_times
+
+```
+
+
+

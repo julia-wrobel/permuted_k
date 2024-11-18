@@ -239,65 +239,9 @@ get_k_power_permOnly = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1), nperm = 1000
 
 
 
-## function for calculating K in simulated data. Takes in full ppp object
-## calculates time for the fperm step.
-## can then apply this to a list of ppp objects
-get_k_survival = function(n, abundance,
-                 rvec = c(0, .05, .075,.1, .15, .2),
-                 id){
-  ################################################################################
-  ################################################################################
-  # simulate data
-  ppp_obj <- sim_scSpatial(n, abundance, type = "inhomClust")
-
-
-  # estimate K using tranlational correction
-  tic()
-  k = Kcross(ppp_obj, i = "immune", j = "immune",
-             r = rvec,
-             correction = c("trans"))
-  time_k = toc()
-
-  k = k %>%
-    as_tibble() %>%
-    mutate(method = "k") %>%
-    select(r, csr = theo, trans, method)
-
-
-  ################################################################################
-  ################################################################################
-  # calculate KAMP statistic
-  tic()
-  kamp = Kest(ppp_obj,
-              r = rvec,
-              correction = c("trans")) %>%
-    as_tibble() %>%
-    mutate(method = "kamp",
-           csr = trans,
-           trans = k$trans) %>%
-    select(r, csr, trans, method)
-  time_kamp = toc()
-
-  ################################################################################
-  ################################################################################
-  # aggregate data
-  res = bind_rows(k, kamp)  %>%
-    mutate(id = id) %>%
-    filter(r != 0) %>%
-    mutate(doc = trans-csr) %>%
-    select(id, r, method, doc) %>%
-    pivot_wider(names_from = method, values_from = doc)
-
-  ################################################################################
-  ################################################################################
-  # generate survival data
-
-  return(res)
-}
-
 
 get_coxPH = function(num_subj, beta, rhoval, k_df){
-  beta_vec <- c(beta, 1)    # Coefficients for covariates
+  beta_vec <- c(beta, -1.5)    # Coefficients for covariates
   lambda <- 0.01          # Baseline hazard rate
   censoring_rate <- 0.3   # Proportion of censored observations
 
