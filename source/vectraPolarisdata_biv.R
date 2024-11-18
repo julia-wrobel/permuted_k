@@ -88,13 +88,7 @@ if(doLocal) {
                                  phenotype_cd68 == "CD68+" ~ "immune2",
                                  TRUE ~ "other"),
            phenotype = factor(phenotype)) %>%
-    select(contains("id"), x, y, phenotype, tissue_category) %>%
-    group_by(sample_id) %>%
-    mutate(n_bcells = sum(phenotype == "immune1"),
-           n_macs = sum(phenotype == "immune2")) %>%
-    ungroup() %>%
-    filter(tissue_category == "Tumor") %>%
-    filter(n_macs >= 3, n_bcells >= 2)
+    filter(tissue_category == "Tumor")
 
   rm(spe_ovarian, assays_slot, intensities_df, nucleus_intensities_df, membrane_intensities_df, colData_df, spatialCoords_df)
 

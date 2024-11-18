@@ -249,7 +249,7 @@ brier_scores <- pec(
   data =  filter(clinical, r == 50),
   times = seq(20, 120, by = 10), # Specify time points for evaluation
   exact = TRUE,
-  splitMethod = "cv10"
+  splitMethod = "cv3"
 )
 
 plot(brier_scores, xlab = "Time", ylab = "Brier Score", main = "Cross-Validated Brier Scores")
