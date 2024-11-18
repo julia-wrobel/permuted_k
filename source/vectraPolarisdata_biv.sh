@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-128%10
+#SBATCH --array=1-128%30
 #SBATCH --job-name=vpData_job
 #SBATCH --mem=20G
 #SBATCH --partition=wrobel,encore
