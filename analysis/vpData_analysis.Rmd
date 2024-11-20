@@ -227,6 +227,10 @@ hist(dat$epd)
 var(log(dat$epd), na.rm = TRUE)
 var(log(dat$k), na.rm = TRUE)
 
+median(log(dat$epd), na.rm = TRUE)
+median(log(dat$k), na.rm = TRUE)
+
+
 mean(dat$kerror)
 var(dat$kerror)
 cor(dat$kamp_std, dat$p_immune). # correlation is 0.3
@@ -497,7 +501,17 @@ dfp %>%
 cph = cph %>% 
   mutate(method = ifelse(epd == TRUE, "KAMP", "K"),
          term = ifelse(term %in% c("k", "epd"), "doc", term),
-         r = round(r))
+         r = round(r),
+             significant = case_when(
+      method == "K" & p.value < 0.05 ~ "K",
+      method == "KAMP" & p.value < 0.05 ~ "KAMP",
+      TRUE ~ NA),
+      significant = factor(significant, levels = c("K", "kperm", "KAMP", "kepdThin"),
+                         labels = c("K", "perm", "KAMP", "KAMP lite")),
+      significant_es = case_when(
+      method == "K" & lower > 0  ~ "K",
+      method == "KAMP"  & lower > 0 ~ "KAMP",
+      TRUE ~ NA),)
 ```
 
 
@@ -506,15 +520,65 @@ cph = cph %>%
 Think about how to expand this plot. Also want areas of significance.
 
 ```{r}
-cph %>%
+es = cph %>%
   filter(term == "doc") %>%
   ggplot(aes(r, resi, group = method, color = method)) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant_es == "K"),
+    aes(ymin = 0, ymax = lower, fill = "K"),
+    alpha = 0.2,
+    color = NA
+  ) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant_es == "KAMP"),
+    aes(ymin = 0, ymax = lower, fill = "KAMP"),
+    alpha = 0.2,
+    color = NA
+  ) +
   geom_line() +
-  geom_line(aes(y = upper), linetype = 2) +
-  geom_line(aes(y = lower), linetype = 2)
+  geom_line(aes(y = upper), linetype = 3) +
+  geom_line(aes(y = lower), linetype = 3) +
+  scale_fill_manual(values = my_colors, guide = "none") +
+   scale_color_manual(values = my_colors) +
+  labs(x = "radius", y = "Effect size",
+       title = "Standardized effect size for degree of clustering") +
+  theme(legend.title = element_blank(), legend.position = "none",
+        legend.text = element_text(size = 12)) +
+   geom_hline(yintercept = 0, linetype = 2, color = "gray")
 ```
 
 
+```{r}
+pp = cph %>%
+  filter(term == "doc") %>%
+  ggplot(aes(r, p.value, group = method, color = method)) +
+  geom_ribbon(
+    data = filter(cph, term == "doc",significant == "K"),
+    aes(ymin = 0, ymax = p.value, fill = "K"),
+    alpha = 0.2,
+    color = NA
+  ) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant == "KAMP"),
+    aes(ymin = 0, ymax = p.value, fill = "KAMP"),
+    alpha = 0.2,
+    color = NA
+  ) +
+  geom_line() +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors, guide = "none") +
+  labs(x = "radius", y = "P-value",
+       title = "P-value for degree of clustering hazard ratio") +
+  theme(legend.title = element_blank(), legend.position = c(0.5, 0.6),
+        legend.text = element_text(size = 12)) +
+  geom_hline(yintercept = 0.05, linetype = 2, color = "gray")
+```
+
+
+
+```{r fig_vpData_survival2, fig.height=6}
+es/pp
+```
 
 
 
