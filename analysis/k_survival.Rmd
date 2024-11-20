@@ -60,7 +60,7 @@ Here we load and process simulation results. Full simulations involve 36 scenari
 
 ```{r}
 # load only results for VB and TS
-files = list.files(here::here("output", "univariate_survival", "20241118"), 
+files = list.files(here::here("output", "univariate_survival", "20241120"), 
 									 full.names =  TRUE)
 
 # call merge_files() defined in utils.R
@@ -99,8 +99,7 @@ Below shows the bias as a boxplot Figure
 ```{r }
 bias = df %>%
   filter(n_subj == 500) %>%
-  filter(rho == 0.5,
-         term == "DoC") %>%
+  filter(term == "DoC") %>%
   mutate(beta = factor(beta_val)) %>%
   ggplot(aes(beta, bias, group = interaction(beta, method), fill = method)) +
   geom_boxplot() +
@@ -108,6 +107,7 @@ bias = df %>%
        y = TeX("$\\hat{\\beta}-\\beta$"),
        title = TeX("Bias")) +
   theme_minimal() +
+  ylim(-3,3) +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
   theme(legend.position = c(0.6, 0.8),
@@ -115,6 +115,8 @@ bias = df %>%
         legend.title = element_blank(),
          legend.text = element_text(size = 12)) 
 
+
+bias
 ```
 
 
@@ -123,12 +125,11 @@ Coverage as a Figure
 
 ```{r}
 coverage_df = df %>%
-  select(term, rho, method, beta_val, n_subj, conf.high, conf.low) %>%
+  filter(!is.na(conf.low)) %>%
+  dplyr::select(term, rho, method, beta_val, n_subj, conf.high, conf.low) %>%
   filter(term == "DoC",
-         rho == 0.5,
-         abs(beta_val) < 2,
-         n_subj != "100") %>%
-  group_by(method, beta_val, rho, n_subj) %>%
+         abs(beta_val) < 2) %>%
+  group_by(method, beta_val, n_subj) %>%
   mutate(coverage = ifelse(beta_val < conf.high & beta_val > conf.low, 1, 0)) %>%
   summarize(coverage = sum(coverage),
             n_sim = n()) %>%
@@ -154,6 +155,7 @@ cov = coverage_df %>%
   geom_hline(yintercept = 0.95, linetype = 2, color = "gray") +
   facet_wrap(~beta_val, labeller = label_parsed, nrow = 1)
 
+cov
 ```
 
 
