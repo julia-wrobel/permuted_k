@@ -74,6 +74,7 @@ df = map_dfr(files, merge_files)
 ```{r}
 
 df = df %>%
+  filter(beta_val != 2, abs(beta_val) != 1, n_subj != 2000) %>%
     mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
@@ -85,7 +86,7 @@ df = df %>%
            beta_term = str_c("beta: ", term)) %>%
     group_by(method) %>%
     mutate(bias = case_when(term == "DoC" ~ estimate - beta_val,
-                            term == "X2" ~ estimate + 1,
+                            term == "X2" ~ estimate - 1,
                           TRUE ~ estimate - 1)) %>%
     ungroup() 
 ```
@@ -107,7 +108,7 @@ bias = df %>%
        y = TeX("$\\hat{\\beta}-\\beta$"),
        title = TeX("Bias")) +
   theme_minimal() +
-  ylim(-3,3) +
+  #ylim(-2,2) +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
   theme(legend.position = c(0.6, 0.8),
@@ -125,10 +126,9 @@ Coverage as a Figure
 
 ```{r}
 coverage_df = df %>%
-  filter(!is.na(conf.low)) %>%
+  #filter(!is.na(conf.low)) %>%
   dplyr::select(term, rho, method, beta_val, n_subj, conf.high, conf.low) %>%
-  filter(term == "DoC",
-         abs(beta_val) < 2) %>%
+  filter(term == "DoC", beta_val != 1) %>%
   group_by(method, beta_val, n_subj) %>%
   mutate(coverage = ifelse(beta_val < conf.high & beta_val > conf.low, 1, 0)) %>%
   summarize(coverage = sum(coverage),
@@ -138,7 +138,7 @@ coverage_df = df %>%
          upper = map2_dbl(coverage, n_sim, ~ {binom.test(.x, .y)$conf.int[2]}),
          coverage = coverage / n_sim) %>%
   mutate(beta_val = str_c("beta: ", beta_val),
-         beta_val = factor(beta_val, levels = c("beta: -2", "beta: -0.5", "beta: 0", "beta: 0.5", "beta: 2")))
+         beta_val = factor(beta_val, levels = c("beta: -0.5", "beta: 0", "beta: 0.5", "beta: 1")))
 
 
 cov = coverage_df %>%

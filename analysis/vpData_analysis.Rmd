@@ -209,20 +209,41 @@ clinical %>%
 ```
 
 
+
+## Empirical densities
+
+
+Here we generate empirical densities for use in data-driven simulation
+
+```{r}
+dat = filter(clinical, r == 101) %>%
+  mutate(kerror = k - epd) %>%
+  filter(kerror < 1e05,
+         kerror >= 0,
+         epd < 5e05) %>%
+  arrange(kerror) %>%
+  select(sample_id, kerror, epd, k)
+
+
+
+# Estimate kernel density
+density_kamp <- density(dat$epd)
+density_error = density(dat$kerror)
+
+save(density_kamp, density_error, file = here::here("data", "densities_ovarian_data.Rda"))
+```
+
+
+
 ## Out of sample survival prediction
 
 Here we do cross validation to get out of sample predictions using the model with K and KAMP, and assess predictive performance.  Choosing 3 radii.
 
 ```{r, eval = FALSE}
-dat = filter(clinical, r == 50) %>%
-  mutate(kerror = k - epd) %>%
-  filter(kerror >=0 ) %>%
-  mutate(kamp_std = (epd -mean(epd))/sd(epd),
-         kerror = log(kerror),
-         kerror_std = (kerror - mean(kerror))/sd(kerror))
-  
-hist(dat$kerror)
-hist(dat$epd)
+
+
+
+
 
 var(log(dat$epd), na.rm = TRUE)
 var(log(dat$k), na.rm = TRUE)

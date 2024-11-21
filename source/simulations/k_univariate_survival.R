@@ -18,7 +18,7 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(purrr))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(tictoc))
-suppressPackageStartupMessages(library(scSpatialSIM))
+#suppressPackageStartupMessages(library(scSpatialSIM))
 suppressPackageStartupMessages(library(survival))
 
 
@@ -35,9 +35,17 @@ if(substring(wd, 2, 6) == "Users"){
 ###############################################################
 ## define or source functions used in code below
 ###############################################################
-source(here::here("source", "simulate_ppp.R"))
+#source(here::here("source", "simulate_ppp.R"))
 source(here::here("source", "utils_k.R"))
-source(here::here("source", "simulate_scSpatialSim.R"))
+#source(here::here("source", "simulate_scSpatialSim.R"))
+
+
+
+###############################################################
+## load densities of KAMP values and K-KAMP values for use in simulation
+###############################################################
+
+load(file = here::here("data", "densities_ovarian_data.Rda"))
 
 
 ###############################################################
@@ -110,8 +118,9 @@ for(i in 1:it){
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  kamp = rnorm(n_subj, mean = 9)
-  k = kamp + rnorm(n_subj, mean = 7)
+  kamp = sample(density_kamp$x, size = n_subj, prob = density_kamp$y, replace = TRUE)
+  error = sample(density_error$x, size = n_subj, prob = density_error$y, replace = TRUE)
+  k = kamp + error
   r = 1
   id = 1:n_subj
 
