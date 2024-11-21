@@ -124,9 +124,19 @@ for(i in 1:it){
   r = 1
   id = 1:n_subj
 
+  kamp = as.vector(scale(kamp))
+  k = as.vector(scale(k))
+
 
   kvals = data.frame(id = id, r = r, k = k, kamp = kamp)
 
+
+  #hist(kamp)
+  #hist(k)
+  #mean(kamp)
+  #mean(k)
+  #sd(k)
+  #sd(kamp)
 
   # simulate survival data and fit cox models
   fits = get_coxPH(n_subj, beta_val, rho, kvals)

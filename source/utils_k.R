@@ -246,6 +246,8 @@ get_coxPH = function(num_subj, beta, rhoval, k_df){
   censoring_rate <- 0.2   # Proportion of censored observations
 
 
+  # standardize variable values first before fitting them in the model
+
   # X1 based on KAMP, so that is the true value
   X1 = k_df$kamp
 

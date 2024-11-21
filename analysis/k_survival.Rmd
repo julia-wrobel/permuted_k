@@ -60,7 +60,7 @@ Here we load and process simulation results. Full simulations involve 36 scenari
 
 ```{r}
 # load only results for VB and TS
-files = list.files(here::here("output", "univariate_survival", "20241120"), 
+files = list.files(here::here("output", "univariate_survival", "20241121"), 
 									 full.names =  TRUE)
 
 # call merge_files() defined in utils.R
@@ -73,8 +73,8 @@ df = map_dfr(files, merge_files)
 
 ```{r}
 
-df = df %>%
-  filter(beta_val != 2, abs(beta_val) != 1, n_subj != 2000) %>%
+df2 = df %>%
+  #filter(beta_val != 2, abs(beta_val) != 1, n_subj != 2000) %>%
     mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
@@ -84,11 +84,9 @@ df = df %>%
            n_subj = factor(n_subj),
            term = ifelse(term %in% c("k", "kamp"), "DoC", term),
            beta_term = str_c("beta: ", term)) %>%
-    group_by(method) %>%
     mutate(bias = case_when(term == "DoC" ~ estimate - beta_val,
                             term == "X2" ~ estimate - 1,
-                          TRUE ~ estimate - 1)) %>%
-    ungroup() 
+                          TRUE ~ estimate - 1))
 ```
 
 
@@ -98,8 +96,8 @@ df = df %>%
 Below shows the bias as a boxplot Figure
 
 ```{r }
-bias = df %>%
-  filter(n_subj == 500) %>%
+df2 %>%
+  #filter(n_subj == 500) %>%
   filter(term == "DoC") %>%
   mutate(beta = factor(beta_val)) %>%
   ggplot(aes(beta, bias, group = interaction(beta, method), fill = method)) +
@@ -108,13 +106,14 @@ bias = df %>%
        y = TeX("$\\hat{\\beta}-\\beta$"),
        title = TeX("Bias")) +
   theme_minimal() +
-  #ylim(-2,2) +
+  ylim(-2,2) +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
   theme(legend.position = c(0.6, 0.8),
         legend.direction = "horizontal",
         legend.title = element_blank(),
-         legend.text = element_text(size = 12)) 
+         legend.text = element_text(size = 12)) +
+  facet_wrap(~n_subj)
 
 
 bias
@@ -125,15 +124,16 @@ Coverage as a Figure
 
 
 ```{r}
-coverage_df = df %>%
+coverage_df = df2 %>%
   #filter(!is.na(conf.low)) %>%
   dplyr::select(term, rho, method, beta_val, n_subj, conf.high, conf.low) %>%
-  filter(term == "DoC", beta_val != 1) %>%
+  #filter(term == "DoC", beta_val != 1) %>%
   group_by(method, beta_val, n_subj) %>%
   mutate(coverage = ifelse(beta_val < conf.high & beta_val > conf.low, 1, 0)) %>%
   summarize(coverage = sum(coverage),
             n_sim = n()) %>%
   ungroup() %>%
+  filter(!is.na(coverage)) %>%
   mutate(lower = map2_dbl(coverage, n_sim, ~ {binom.test(.x, .y)$conf.int[1]}),
          upper = map2_dbl(coverage, n_sim, ~ {binom.test(.x, .y)$conf.int[2]}),
          coverage = coverage / n_sim) %>%
