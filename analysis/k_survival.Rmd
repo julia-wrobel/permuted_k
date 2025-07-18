@@ -73,8 +73,8 @@ df = map_dfr(files, merge_files)
 
 ```{r}
 
-df2 = df %>%
-  #filter(beta_val != 2, abs(beta_val) != 1, n_subj != 2000) %>%
+df = df %>%
+  filter(beta_val != 2) %>%
     mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
@@ -96,8 +96,8 @@ df2 = df %>%
 Below shows the bias as a boxplot Figure
 
 ```{r }
-df2 %>%
-  #filter(n_subj == 500) %>%
+bias = df %>%
+  filter(n_subj == 1000) %>%
   filter(term == "DoC") %>%
   mutate(beta = factor(beta_val)) %>%
   ggplot(aes(beta, bias, group = interaction(beta, method), fill = method)) +
@@ -106,15 +106,13 @@ df2 %>%
        y = TeX("$\\hat{\\beta}-\\beta$"),
        title = TeX("Bias")) +
   theme_minimal() +
-  ylim(-2,2) +
+  #ylim(-2,2) +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = c(0.6, 0.8),
+  theme(legend.position = c(0.6, 0.2),
         legend.direction = "horizontal",
         legend.title = element_blank(),
-         legend.text = element_text(size = 12)) +
-  facet_wrap(~n_subj)
-
+         legend.text = element_text(size = 12))
 
 bias
 ```
@@ -124,10 +122,10 @@ Coverage as a Figure
 
 
 ```{r}
-coverage_df = df2 %>%
+coverage_df = df %>%
   #filter(!is.na(conf.low)) %>%
   dplyr::select(term, rho, method, beta_val, n_subj, conf.high, conf.low) %>%
-  #filter(term == "DoC", beta_val != 1) %>%
+  filter(term == "DoC", beta_val != 2) %>%
   group_by(method, beta_val, n_subj) %>%
   mutate(coverage = ifelse(beta_val < conf.high & beta_val > conf.low, 1, 0)) %>%
   summarize(coverage = sum(coverage),
@@ -138,7 +136,7 @@ coverage_df = df2 %>%
          upper = map2_dbl(coverage, n_sim, ~ {binom.test(.x, .y)$conf.int[2]}),
          coverage = coverage / n_sim) %>%
   mutate(beta_val = str_c("beta: ", beta_val),
-         beta_val = factor(beta_val, levels = c("beta: -0.5", "beta: 0", "beta: 0.5", "beta: 1")))
+         beta_val = factor(beta_val, levels = c("beta: -1", "beta: -0.5", "beta: 0", "beta: 0.5", "beta: 1")))
 
 
 cov = coverage_df %>%
@@ -150,7 +148,8 @@ cov = coverage_df %>%
        title = "Coverage") +
   theme(legend.position = c(0.5, 0.4),
          legend.title = element_blank(),
-         legend.text = element_text(size = 12)) + 
+         legend.text = element_text(size = 12),
+         axis.text.x = element_text(angle = 45, hjust = 1)) + 
   scale_color_manual(values = my_colors) +
   geom_hline(yintercept = 0.95, linetype = 2, color = "gray") +
   facet_wrap(~beta_val, labeller = label_parsed, nrow = 1)

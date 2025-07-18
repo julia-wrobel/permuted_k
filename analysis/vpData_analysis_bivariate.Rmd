@@ -1,0 +1,458 @@
+---
+title: "Bivariate analysis of VectraPolarisData"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(survival)
+library(pec)
+library(patchwork)
+library(broom)
+library(viridis)
+library(RESI)
+library(ggstance)
+library(latex2exp)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+
+# Define a custom color palette for the methods
+my_colors <- c(
+  "K" = "#440154",
+ # "perm" = "#2A788E",
+  # perm wald = 22A884,
+  "KAMP" = "#7AD151"
+  #"KAMP lite" = "#FDE725"
+)
+```
+
+# Load data
+
+Using ovarian cancer data from [VectraPolarisData](https://www.bioconductor.org/packages/release/data/experiment/html/VectraPolarisData.html) package. Data cleaning process shown in `source/vectraPolarisdata.R`.
+
+```{r}
+load(here::here("data", "processed_ovarian_data.Rda"))
+```
+
+For the bivariate analysis we subset to subjects with at least 2 b-cells and at least 3 macrophages in the tumor compartment. This leaves a total of 71 subjects.
+
+```{r}
+ovarian %>% 
+  filter(tissue_category == "Tumor") %>%
+  group_by(sample_id) %>%
+  summarize(n = n(),
+            m_cd19 = sum(phenotype == "immune1"),
+            m_cd68 = sum(phenotype == "immune2")) %>%
+  ungroup()  %>%
+  # only 71 subjects have at least 2 B-cells and at least 3 macrophages
+  filter(m_cd68 >= 2, m_cd19 >= 2) %>%
+  pivot_longer(n:m_cd68, names_to = "stat", values_to = "value") %>%
+  group_by(stat) %>%
+  summarize(median = median(value),
+            q25 = quantile(value, .25),
+            q75 = quantile(value, .75),
+            min = min(value),
+            max = max(value)) %>%
+  ungroup() %>%
+  select(stat, min, q25, median, q75, max)
+
+
+```
+
+
+
+
+
+# Process data analysis results
+
+
+Source file for consolidating analyses
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+```{r}
+files = list.files(here::here("output", "vpData_bivariate"))
+
+# call merge_files_vectraPolaris() defined in utils.R
+df = map_dfr(files, merge_files_vectraPolaris, bivariate = TRUE)
+
+# make comp times dataset
+times_df = df %>%
+  select(sample_id, time, method) %>%
+  distinct() %>%
+  mutate(method = factor(method, levels = c("k","perm", "kamp", "kamp_lite"),
+                         labels = c("K", "perm", "KAMP", "KAMP lite")))
+  
+
+# make degree of clustering dataset for use in survival analysis
+doc_df = df %>%
+  filter(r > 5) %>%
+  select(sample_id, method, r, csr, trans) %>%
+  mutate(doc = trans - csr) 
+
+
+
+# get pvalues 
+dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE, bivariate = TRUE) %>%
+    mutate(z = (khat-expectation) / sqrt(var),
+         pvalue = pnorm(-z))  %>%
+  select(-z, -Z)
+
+
+
+```
+
+
+* Look at curves with my correction and with other correction
+* Look at speed of calculating expected value for mine and permutation
+* Look at p-values
+
+# Analysis
+
+## Survival analysis
+
+Do across radii. 
+
+```{r}
+# calculate abundance of immune cells
+p_immune = ovarian %>% 
+  filter(tissue_category == "Tumor") %>%
+  group_by(sample_id) %>%
+  summarize(n = n(),
+            m = sum(immune == "immune"),
+            p_immune = m/n) %>%
+  ungroup() 
+
+
+# use K but also control for age, stage, and abundance
+clinical = patient_level_ovarian %>%
+  select(sample_id,  age = age_at_diagnosis, stage = stage_bin,
+         survival_time, event = death, primary) %>%
+  filter(sample_id %in% unique(doc_df$sample_id)) %>%
+  distinct() %>%
+  left_join(p_immune) %>%
+  left_join(doc_df) %>%
+  filter(primary == 1)
+
+
+
+
+get_coxph = function(dat, rval, doc_method = "kamp", get_resi = TRUE){
+  dat = filter(dat, r == rval, method == doc_method)  %>%
+    mutate(doc = doc / 1000)
+  
+  mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + doc, 
+              data = dat)
+  
+  if(get_resi){
+    resi_object = resi(mod, data = dat)
+    
+      tidy(mod, exp = TRUE) %>%
+    mutate(r = rval, method = doc_method, 
+           resi = coef(resi_object)$RESI,
+           lower = coef(resi_object)$"2.5%",
+           upper = coef(resi_object)$"97.5%")
+  }else{
+      tidy(mod, exp = TRUE) %>%
+      mutate(r = rval, method = doc_method)
+  }
+  
+
+}
+
+safe_get_coxph <- possibly(
+  get_coxph,
+  otherwise = tibble(term = NA, estimate = NA, std.error = NA, statistic = NA, p.value = NA, r = NA, method = NA,
+                     resi = NA, lower = NA, upper = NA)
+)
+
+
+
+
+filename = here::here("output",
+                      "VPdata_coxPH_results_bivariate.RData")
+
+if(file.exists(filename)){
+	load(filename)
+}else{
+  kamp = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "kamp")
+  k = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "k")
+  kinhom = map_dfr(unique(clinical$r), safe_get_coxph, dat = clinical, doc_method = "kinhom")
+  kamp_lite = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "kamp_lite")
+  perm = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "perm")
+  
+  cph = bind_rows(kamp, k, kinhom, kamp_lite, perm)
+  
+  kamp = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "kamp", get_resi = FALSE)
+  k = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "k", get_resi = FALSE)
+  kinhom = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "kinhom", get_resi = FALSE)
+  kamp_lite = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "kamp_lite", get_resi = FALSE)
+  perm = map_dfr(unique(clinical$r), get_coxph, dat = clinical, doc_method = "perm", get_resi = FALSE)
+  
+  cph_noResi = bind_rows(kamp, k, kinhom, kamp_lite, perm)
+  
+  save(cph, cph_noResi, file = filename)
+  
+  
+  ## save with no resi as well
+}
+
+
+```
+
+
+
+## Out of sample survival prediction
+
+Here we do cross validation to get out of sample predictions using the model with K and KAMP, and assess predictive performance.  Choosing 3 radii.
+
+```{r, eval = FALSE}
+
+
+
+
+
+var(log(dat$epd), na.rm = TRUE)
+var(log(dat$k), na.rm = TRUE)
+
+median(log(dat$epd), na.rm = TRUE)
+median(log(dat$k), na.rm = TRUE)
+
+
+mean(dat$kerror)
+var(dat$kerror)
+cor(dat$kamp_std, dat$p_immune). # correlation is 0.3
+
+
+mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + log(epd), 
+              data = dat, x = TRUE, y = TRUE)
+
+mod_k = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
+              data = filter(clinical, r == 50), x = TRUE, y = TRUE)
+
+
+
+
+# Compute cross-validated Brier scores
+# Use pec to create prediction error curves with cross-validation
+brier_scores <- pec(
+  object = list("KAMP" = mod, "K" = mod_k),
+  formula = Surv(survival_time, event) ~ age + stage + p_immune + epd,
+  data =  filter(clinical, r == 50),
+  times = seq(20, 120, by = 10), # Specify time points for evaluation
+  exact = TRUE,
+  splitMethod = "cv3"
+)
+
+plot(brier_scores, xlab = "Time", ylab = "Brier Score", main = "Cross-Validated Brier Scores")
+```
+
+
+
+# Table
+
+Produce table of estimates at R = 75
+
+
+```{r}
+cph_noResi %>%
+  filter(r == 100) %>%
+  mutate(p = format.pval(p.value, digits = 2),
+         lower = exp(log(estimate) - 1.96 * std.error),
+         upper = exp(log(estimate) + 1.96 * std.error),
+         OR = str_c(round(estimate, 2), " (", round(lower, 2), ", ", round(upper,2), ")")) %>%
+  select(term, method, OR, p) %>%
+  arrange(term) %>%
+  knitr::kable(digits = 2)
+```
+
+
+
+Add to this plot: 
+
+- edit labels
+- figure out what is going on with Kinhom
+- make colors consistent with previous plots 
+- consider hazard ratio
+- probably get rid of effect size stuff
+
+```{r}
+cph_noResi %>%
+  filter(r == 100) %>%
+  mutate(
+    lower = exp(log(estimate) - 1.96 * std.error),
+    upper = exp(log(estimate) + 1.96 * std.error),
+    sig = case_when(
+  p.value < 0.001 ~ "***",
+  p.value < 0.01 ~ "**",
+  p.value < 0.05 ~ "*",
+  TRUE ~ "")
+  ) %>%
+  ggplot(aes(x = method, y = estimate, color = method)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
+  geom_text(aes(label = sig), vjust = -1.2, color = "black", size = 6) +
+  geom_hline(yintercept = 1, linetype = "dotted", color = "grey40") +
+  facet_wrap(~ term, scales = "free_y") +
+  labs(
+    x = "Method",
+    y = "Hazard Ratio",
+    title = "Hazard Ratios by Method for Each Term"
+  ) +
+  theme_minimal()  +
+  theme(legend.position = "none") 
+  
+```
+
+
+# Figures
+
+
+
+## Figure 6
+
+
+
+
+Think about how to expand this plot. Also want areas of significance.
+
+
+```{r}
+cph = cph %>% 
+  mutate(significant = case_when(
+      method == "k" & p.value < 0.05 ~ "K",
+      method == "kamp" & p.value < 0.05 ~ "KAMP",
+      TRUE ~ NA),
+      significant = factor(significant, levels = c("K", "KAMP")),
+      significant_es = case_when(
+      method == "k" & lower > 0  ~ "K",
+      method == "kamp"  & lower > 0 ~ "KAMP",
+      TRUE ~ NA),
+      method = factor(method, levels = c("k", "kamp"), labels = c("K", "KAMP")))
+```
+
+
+
+```{r}
+es = cph %>%
+  filter(term == "doc") %>%
+  ggplot(aes(r, resi, group = method, color = method)) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant_es == "K"),
+    aes(ymin = 0, ymax = lower, fill = "K"),
+    alpha = 0.2,
+    color = NA
+  ) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant_es == "KAMP"),
+    aes(ymin = 0, ymax = lower, fill = "KAMP"),
+    alpha = 0.2,
+    color = NA
+  ) +
+  geom_line() +
+  geom_line(aes(y = upper), linetype = 3) +
+  geom_line(aes(y = lower), linetype = 3) +
+  scale_fill_manual(values = my_colors, guide = "none") +
+   scale_color_manual(values = my_colors) +
+  labs(x = "radius", y = "Effect size",
+       title = "Standardized effect size for degree of colocalization") +
+  theme(legend.title = element_blank(), legend.position = "none",
+        legend.text = element_text(size = 12)) +
+   geom_hline(yintercept = 0, linetype = 2, color = "gray")
+```
+
+
+```{r}
+pp = cph %>%
+  filter(term == "doc") %>%
+  ggplot(aes(r, p.value, group = method, color = method)) +
+  geom_ribbon(
+    data = filter(cph, term == "doc",significant == "K"),
+    aes(ymin = 0, ymax = p.value, fill = "K"),
+    alpha = 0.2,
+    color = NA
+  ) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant == "KAMP"),
+    aes(ymin = 0, ymax = p.value, fill = "KAMP"),
+    alpha = 0.2,
+    color = NA
+  ) +
+  geom_line() +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors, guide = "none") +
+  labs(x = "radius", y = "P-value",
+       title = "P-value for degree of colocalization hazard ratio") +
+  theme(legend.title = element_blank(), legend.position = c(0.6, 0.4),
+        legend.text = element_text(size = 12)) +
+  geom_hline(yintercept = 0.05, linetype = 2, color = "gray")
+```
+
+
+
+```{r fig_vpData_survival_biv, fig.height=6}
+es/pp
+```
+
+
+
+
+```{r fig_vpData_survival, fig.width = 9}
+
+p_df = cph %>%
+  filter(r %in% c(25, 125, 175), term == "doc") %>%
+  mutate(term = factor(term, label = "DoC")) %>%
+  mutate(#p = format.pval(p.value, digits = 1),
+         p = round(p.value, 2),
+        resi = -0.1) %>%
+  select(term, r, method, p,  resi)
+
+cph %>%
+  filter(r %in% c(25, 125, 175)) %>%
+  select(term, r, resi, lower, upper, p.value, method) %>%
+  mutate(term = factor(term,
+                       levels = c("age", "stage", "p_immune", "doc"),
+                       labels = c("age", "stage", "abundance", "DoC"))) %>%
+  ggplot(aes(term, resi, color = method, 
+             group = interaction(term, method), 
+             linetype = method)) +
+  geom_point(size = 2, position = position_dodge(0.5)) +
+  theme_bw() +
+  labs(y = "standardized effect size") +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = .7,
+                position = position_dodge(0.5)) +
+  theme(axis.title.x = element_blank(),
+                axis.text.x = element_text(angle = 45,  hjust=1,
+                                   size = 12),
+        strip.text = element_text(size = 12),
+        axis.title.y = element_text(size = 13),
+        legend.title = element_blank(),
+        legend.position = c(0.1, 0.15)) +
+  geom_text(data = p_df, aes(label = p),  
+            position = position_dodgev(0.1)) +
+  geom_hline(yintercept = 0, linetype = 3) +
+  scale_color_manual(values = my_colors) +
+  facet_wrap(~r, labeller = label_both)
+```
+

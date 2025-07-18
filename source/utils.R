@@ -18,8 +18,13 @@ merge_files = function(file, variance = FALSE){
 
 
 # merge and process files from real data analysis
-merge_files_vectraPolaris = function(file, variance = FALSE){
-  load(here::here("output", "vpData", file))
+merge_files_vectraPolaris = function(file, variance = FALSE, bivariate = FALSE){
+  if(bivariate){
+    load(here::here("output", "vpData_bivariate", file))
+  }else{
+    load(here::here("output", "vpData", file))
+  }
+
   sample_id = str_replace(file, "RDA", "im3")
 
   if(variance){

@@ -47,61 +47,47 @@ get_k = function(ppp_obj,
     select(r, csr, trans, method)
   time_kamp = toc()
 
+}
+  ## function for calculating KAMP lite only in simulated data. Takes in full ppp object
+  ## calculates time
+  ## can then apply this to a list of ppp objects
+get_kamplite = function(ppp_obj,
+                   rvec = c(0, .05, .075,.1, .15, .2),
+                   thinning = 0.5){
+
+
+  k = Kcross(ppp_obj, i = "immune", j = "immune",
+             r = rvec,
+             correction = c("trans"))
 
   ################################################################################
+  # Expectation
   ################################################################################
   # calculate kamp statistic on 50% thinned data
   tic()
-  ppp_obj_lite = rthin(ppp_obj, P = .5)
+  ppp_obj_lite = rthin(ppp_obj, P = thinning)
   kamp_lite = Kest(ppp_obj_lite,
                    r = rvec,
                    correction = c("trans")) %>%
     as_tibble() %>%
     mutate(method = "kamp_lite",
            csr = trans,
-           trans = k$trans) %>%
-    select(r, csr, trans, method)
+           trans = k$trans,
+           p_thin = thinning) %>%
+    select(r, csr, trans, method, p_thin)
   time_kamplite = toc()
 
-  ################################################################################
-  ################################################################################
-  # calculate perm statistic
-  kf = function(obj){
-    kdf = Kcross(obj, i = "immune", j = "immune",
-                 r = rvec,
-                 correction = c("trans"))
-
-    as_tibble(kdf) %>% filter(r %in% rvec) %>% select(r, trans)
-  }
-
-
-  tic()
-  perms = rlabel(ppp_obj, nsim = nperm)
-  kperm = map_dfr(perms, kf)
-  kperm = kperm %>% group_by(r) %>% summarise(csr = mean(trans)) %>% ungroup() %>%
-    mutate(trans = k$trans,
-           method = "perm") %>%
-    select(r, csr, trans, method)
-  time_perm = toc()
-
 
   ################################################################################
+  # Variance
   ################################################################################
+  kamplite_var = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_lite)
 
-  times = c(time_k$toc - time_k$tic,
-             time_kinhom$toc - time_kinhom$tic,
-             time_kamp$toc - time_kamp$tic,
-             time_kamplite$toc - time_kamplite$tic,
-             time_perm$toc - time_perm$tic)
+  kamp_lite = left_join(kamp_lite, kamplite_var) %>%
+    select(-khat, -expectation) %>%
+    mutate(time = time_kamplite$toc - time_kamplite$tic)
 
-
-  ################################################################################
-  ################################################################################
-  # aggregate data
-  res = bind_rows(k, kinhom, kamp, kamp_lite, kperm) %>%
-    mutate(time = rep(times, each = length(rvec)))
-
-  return(res)
+  return(kamp_lite)
 }
 
 
