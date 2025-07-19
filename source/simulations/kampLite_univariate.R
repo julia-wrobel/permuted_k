@@ -78,7 +78,7 @@ n = params$n[scenario]
 m = params$m[scenario]
 abundance = params$abundance[scenario]
 type = params$type[scenario]
-thinning_proportions = c(0.25, 0.5, 0.75, 0.9)
+thinning_proportions = c(0, 0.25, 0.5, 0.75, 0.9)
 SEED.START = params$seed_start[scenario]
 
 results = vector("list", length = N_iter)

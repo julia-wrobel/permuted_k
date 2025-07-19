@@ -65,7 +65,10 @@ get_kamplite = function(ppp_obj,
   ################################################################################
   # calculate kamp statistic on 50% thinned data
   tic()
-  ppp_obj_lite = rthin(ppp_obj, P = thinning)
+  ppp_obj_lite = rthin(ppp_obj, P = 1- thinning)
+  if(thinning == 0){
+    ppp_obj_lite = ppp_obj
+  }
   kamp_lite = Kest(ppp_obj_lite,
                    r = rvec,
                    correction = c("trans")) %>%
