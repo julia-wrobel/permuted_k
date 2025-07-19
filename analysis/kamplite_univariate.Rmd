@@ -1,0 +1,137 @@
+---
+title: "simulation results for kamplite"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+# Overview
+
+This file loads data objects stored from simulations and produces figures for the supplement, specifically related to varying thinning probabilities across different simulation settings for kamplite.  Libraries and code are sourced below. 
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(viridis)
+library(patchwork)
+library(latex2exp)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+
+my_colors <- c(
+  "K" = "#440154",
+  "Kinhom" = "#414487",
+  "perm" = "#2A788E",
+  "KAMP" = "#7AD151",
+  "KAMP lite" = "#FDE725"
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Source code
+
+Source file for consolidating simulations
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+# Expectation
+
+## Clean and process simulation data
+
+Here we load and process simulation results. Full simulations involve 36 scenarios with 50 simulated datasets each.
+
+
+```{r}
+# load only results for VB and TS
+files = list.files(here::here("output", "kamplite", "20250719"), 
+									 full.names =  TRUE)
+
+# call merge_files() defined in utils.R
+df = map_dfr(files, merge_files)
+
+```
+
+
+
+
+```{r}
+# make comp times dataset
+times_df = df %>%
+  select(r, iter, type, lambda_n,
+         abundance,
+         p_thin,
+         time) %>%
+  filter(r == 0.5) %>%
+  group_by(p_thin, type, lambda_n, abundance) %>%
+  summarize(time = median(time)) %>%
+  ungroup() 
+
+df = df %>%
+  filter((type %in% c("hom", "inhom") & r == 0.5) | (type %in% c("homClust", "inhomClust") & r == 1.25),
+         lambda_n != 2000
+         ) %>%
+  mutate(abundance = factor(abundance),
+         value = trans-csr)  %>%
+  filter(value < 25) %>%
+    mutate(method = factor(method,
+                         levels = c("k", "kinhom", "perm", 
+                                    "kamp",  
+                                    "kamp_lite"),
+                         labels = c("K", "Kinhom","perm", "KAMP",
+                                    "KAMP lite")),
+         type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
+                            labels = c("homogeneous",
+                                       "inhomogeneous",
+                                       "homogeneous + clustered",
+                                       "inhomogeneous + clustered")),
+         lambda_n = str_c("lambda[n]: ", lambda_n),
+         lambda_n = factor(lambda_n, levels = c("lambda[n]: 1000", "lambda[n]: 2000",
+                                                "lambda[n]: 5000", "lambda[n]: 10000")))  %>%
+  filter(method != "Kinhom")
+```
+
+
+
+## Figures 
+
+```{r}
+ times_df %>%
+  filter(type == "inhom") %>%
+  mutate(abundance = factor(abundance),
+         thinning = factor(p_thin),
+         lambda_n = factor(lambda_n, levels = c(1000, 2000, 5000, 10000),
+                           labels = c("lambda[n]: 1000",
+                                      "lambda[n]: 2000",
+                                      "lambda[n]: 5000",
+                                      "lambda[n]: 10000"))) %>%
+  ggplot(aes(abundance, log(time), color = thinning, 
+             group = interaction(abundance, thinning), linetype = thinning)) +
+  geom_point() +
+  theme_minimal() + 
+  theme(legend.position = "top",
+        legend.title = element_blank()) +
+  geom_line(aes(group = thinning), linewidth = 1.25) +
+  geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
+  #scale_color_manual(values = my_colors) +
+  labs(x = "abundance",
+       y = "median log(seconds)") +
+  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
+  
+```
+
