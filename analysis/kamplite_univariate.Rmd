@@ -78,9 +78,7 @@ times_df = df %>%
          p_thin,
          time) %>%
   filter(r == 0.5) %>%
-  group_by(p_thin, type, lambda_n, abundance) %>%
-  summarize(time = median(time)) %>%
-  ungroup() 
+  arrange(p_thin)
 
 df = df %>%
   filter((type %in% c("hom", "inhom") & r == 0.5) | (type %in% c("homClust", "inhomClust") & r == 1.25),
@@ -120,17 +118,17 @@ df = df %>%
                                       "lambda[n]: 2000",
                                       "lambda[n]: 5000",
                                       "lambda[n]: 10000"))) %>%
-  ggplot(aes(abundance, log(time), color = thinning, 
-             group = interaction(abundance, thinning), linetype = thinning)) +
-  geom_point() +
+  ggplot(aes(abundance, time, fill = thinning, 
+             group = interaction(abundance, thinning))) +
+  geom_boxplot() +
   theme_minimal() + 
   theme(legend.position = "top",
         legend.title = element_blank()) +
-  geom_line(aes(group = thinning), linewidth = 1.25) +
-  geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
+  #geom_line(aes(group = thinning), linewidth = 1.25) +
+  #geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
   #scale_color_manual(values = my_colors) +
-  labs(x = "abundance",
-       y = "median log(seconds)") +
+  labs(x = "Abundance",
+       y = "Seconds") +
   facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
   
 ```
