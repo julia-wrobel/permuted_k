@@ -129,7 +129,7 @@ df = df %>%
   #scale_color_manual(values = my_colors) +
   labs(x = "Abundance",
        y = "Seconds") +
-  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
+  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1, scales = "free")
   
 ```
 

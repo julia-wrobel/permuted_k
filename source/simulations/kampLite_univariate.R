@@ -38,7 +38,7 @@ source(here::here("source", "get_permutation_distribution.R"))
 ## set simulation design elements
 ###############################################################
 
-n = c(1000, 2000, 5000, 10000)
+n = c(1000, 2000, 5000, 10000, 20000)
 abundance = c(0.01, 0.1, 0.2)
 type = c("inhom", "inhomClust")
 seed_start = 1000
@@ -46,8 +46,8 @@ N_iter = 50
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
-                     n = n,
-                     abundance = abundance)  %>%
+                     abundance = abundance,
+                     n = n)  %>%
   mutate(m = n * abundance) %>%
   filter(m >=5)
 
