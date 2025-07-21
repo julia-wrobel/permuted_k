@@ -243,52 +243,6 @@ save(density_kamp, density_error, file = here::here("data", "densities_ovarian_d
 
 
 
-## Out of sample survival prediction
-
-Here we do cross validation to get out of sample predictions using the model with K and KAMP, and assess predictive performance.  Choosing 3 radii.
-
-```{r, eval = FALSE}
-
-
-
-
-
-var(log(dat$epd), na.rm = TRUE)
-var(log(dat$k), na.rm = TRUE)
-
-median(log(dat$epd), na.rm = TRUE)
-median(log(dat$k), na.rm = TRUE)
-
-
-mean(dat$kerror)
-var(dat$kerror)
-cor(dat$kamp_std, dat$p_immune). # correlation is 0.3
-
-
-mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + log(epd), 
-              data = dat, x = TRUE, y = TRUE)
-
-mod_k = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
-              data = filter(clinical, r == 50), x = TRUE, y = TRUE)
-
-
-
-
-# Compute cross-validated Brier scores
-# Use pec to create prediction error curves with cross-validation
-brier_scores <- pec(
-  object = list("KAMP" = mod, "K" = mod_k),
-  formula = Surv(survival_time, event) ~ age + stage + p_immune + epd,
-  data =  filter(clinical, r == 50),
-  times = seq(20, 120, by = 10), # Specify time points for evaluation
-  exact = TRUE,
-  splitMethod = "cv3"
-)
-
-plot(brier_scores, xlab = "Time", ylab = "Brier Score", main = "Cross-Validated Brier Scores")
-```
-
-
 # Computation times
 
 Computation times for expectation. 
@@ -344,7 +298,8 @@ plot_k = function(idnum){
   filter(sample_id == idnum)
 
   dat_tumor = ovarian %>%
-    filter(sample_id == idnum, tissue_category == "Tumor")
+    filter(sample_id == idnum#, tissue_category == "Tumor"
+           )
    
   p1 = dat %>%
     ggplot(aes(x, y)) +
@@ -365,7 +320,7 @@ plot_k = function(idnum){
     mutate(K = factor(K, levels = c("k", "theo"))) %>%
     ggplot(aes(r, value, color = K, linetype = K)) +
     geom_line(linewidth = 1.25) +
-    scale_colour_manual(values = c("darkred", "#440154"),
+    scale_colour_manual(values = c("#440154", "gray"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
                                    theo = TeX("$pi r^2$"))) +
     scale_linetype_manual(values = c(1, 2),
@@ -380,20 +335,23 @@ plot_k = function(idnum){
   
   
   p3 = df %>%
-    select(sample_id, r, k = khat, theo = ktheo, epd = kepd) %>%
-    pivot_longer(k:epd, names_to = "K", values_to = "value") %>%
+    select(sample_id, r, k = khat, theo = ktheo, epd = kepd, epdlite = kepdThin) %>%
+    pivot_longer(k:epdlite, names_to = "K", values_to = "value") %>%
     filter(sample_id == idnum, r <=150) %>%
-    mutate(K = factor(K, levels = c("k", "epd", "theo"))) %>%
+    mutate(K = factor(K, levels = c("k", "epd",  "epdlite", "theo"))) %>%
     ggplot(aes(r, value, color = K, linetype = K)) +
     geom_line(linewidth = 1.25) +
-    scale_colour_manual(values = c("darkred", "#7AD151", "#440154"),
+    scale_colour_manual(values = c("#440154", "#7AD151", "#FDE725", "gray"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   epd = TeX("$KAMP$"),
+                                   epd = TeX("$E_{KAMP}[\\hat{K}(r)]$"),
+                                   epdlite = TeX("$E_{KAMPlite}[\\hat{K}(r)]$"),
                                    theo = TeX("$\\pi r^2$"))) +
-        scale_linetype_manual(values = c(1, 4, 2),
+        scale_linetype_manual(values = c(1, 4, 2, 5),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
-                                   epd = TeX("$KAMP$"),
-                                   theo = TeX("$\\pi r^2$"))) +
+                                   epd = TeX("$E_{KAMP}[\\hat{K}(r)]$"),
+                                   epdlite = TeX("$E_{KAMPlite}[\\hat{K}(r)]$"),
+                                   theo = TeX("$\\pi r^2$"))
+                        ) +
     labs(y = TeX("K(r)")) +
     theme(legend.position = c(.25,.7),
           legend.title=element_blank(),
@@ -431,48 +389,8 @@ wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[2]]
 ```
 
 
-```{r, eval = FALSE}
-library(plotly)
-p = dfp %>%
-  filter(r <=150, method %in% c("k", "kepd"),
-         round(r) %in% c( 125)) %>%
-  select(sample_id, r, method, DoC) %>%
-  pivot_wider(names_from = method, values_from = DoC) %>%
-  # sound k or divide by 1000 to make this more manageable 
-  mutate(k = round(k/1000),
-         kepd = round(kepd/1000)) %>%
-  mutate(diff = k - kepd) %>%
-  filter(diff > 0) %>%
-  ggplot(aes(kepd, diff, color = sample_id)) +
-  geom_abline(slope = 1, intercept = 0) +
-  geom_point()
 
-
-ggplotly(p)
-
-
-ids = dfp %>%
-  filter(r <=150, method %in% c("k", "kepd"),
-         round(r) %in% c( 125)) %>%
-  select(sample_id, r, method, DoC) %>%
-  pivot_wider(names_from = method, values_from = DoC) %>%
-  # sound k or divide by 1000 to make this more manageable 
-  mutate(k = round(k/1000),
-         kepd = round(kepd/1000))%>%
-  filter(kepd %in% c(16, -43, -42, 2, 24, 8, 7, 3, 4)) %>%
-  pull(sample_id)
-
-patchy2 = plot_k(ids[26])
-
-# 26!
-
-patchy2[[1]] / patchy2[[3]]
-```
-
-
-
-
-## Figure 4
+## Figure 6
 
 
 Same as Figure 1, but including EPD CSR value
@@ -489,22 +407,7 @@ wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[3]]
 
 
 
-## Figure 5
-
-
-Proportion of subjects with significant clustering
-
-```{r}
-dfp %>%
-  filter( sample_id %in% unique(clinical$sample_id),
-          pvalue != -Inf,
-          !is.na(pvalue)) %>%
-  group_by(method, r) %>%
-  summarize(prop = sum(pvalue < 0.05)/n()) %>%
-  ungroup() %>%
-  ggplot(aes(r, prop, color = method, group = method)) +
-  geom_line()
-```
+## Figure 7
 
 
 Boxplots of expectation, variance, and p-value for KAMP, KAMP lite, perm
@@ -549,7 +452,7 @@ df_pval %>%
 
 
 
-## Figure 6
+## Figure 8
 
 
 

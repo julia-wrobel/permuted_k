@@ -29,15 +29,6 @@ knitr::opts_chunk$set(echo = TRUE,
   fig.path = '../output/'
 )
 
-
-my_colors <- c(
-  "K" = "#440154",
-  "Kinhom" = "#414487",
-  "perm" = "#2A788E",
-  "KAMP" = "#7AD151",
-  "KAMP lite" = "#FDE725"
-)
-
 theme_set(theme_bw() + theme(legend.position = "bottom"))
 ```
 
@@ -87,49 +78,137 @@ df = df %>%
   mutate(abundance = factor(abundance),
          value = trans-csr)  %>%
   filter(value < 25) %>%
-    mutate(method = factor(method,
-                         levels = c("k", "kinhom", "perm", 
-                                    "kamp",  
-                                    "kamp_lite"),
-                         labels = c("K", "Kinhom","perm", "KAMP",
-                                    "KAMP lite")),
-         type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
+    mutate(type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
                             labels = c("homogeneous",
                                        "inhomogeneous",
                                        "homogeneous + clustered",
                                        "inhomogeneous + clustered")),
          lambda_n = str_c("lambda[n]: ", lambda_n),
          lambda_n = factor(lambda_n, levels = c("lambda[n]: 1000", "lambda[n]: 2000",
-                                                "lambda[n]: 5000", "lambda[n]: 10000")))  %>%
-  filter(method != "Kinhom")
+                                                "lambda[n]: 5000", "lambda[n]: 10000"))) 
 ```
 
 
 
 ## Figures 
 
+
 ```{r}
- times_df %>%
-  filter(type == "inhom") %>%
-  mutate(abundance = factor(abundance),
-         thinning = factor(p_thin),
-         lambda_n = factor(lambda_n, levels = c(1000, 2000, 5000, 10000),
-                           labels = c("lambda[n]: 1000",
-                                      "lambda[n]: 2000",
-                                      "lambda[n]: 5000",
-                                      "lambda[n]: 10000"))) %>%
-  ggplot(aes(abundance, time, fill = thinning, 
-             group = interaction(abundance, thinning))) +
-  geom_boxplot() +
-  theme_minimal() + 
-  theme(legend.position = "top",
-        legend.title = element_blank()) +
-  #geom_line(aes(group = thinning), linewidth = 1.25) +
+ p_time = times_df %>%
+  filter(type == "inhom",
+         abundance == 0.1) %>%
+  group_by(p_thin, lambda_n) %>%
+  summarize(time = median(time)) %>%
+  ungroup() %>%
+  mutate(Thinning = factor(p_thin),
+         lambda_n = factor(lambda_n, levels = c(1000, 2000, 5000, 10000))) %>%
+  ggplot(aes(lambda_n, time, color = Thinning, 
+             group = interaction(lambda_n, Thinning))) +
+  geom_point() +
+  geom_line(aes(group = Thinning), linewidth = 1.25) +
   #geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
-  #scale_color_manual(values = my_colors) +
-  labs(x = "Abundance",
-       y = "Seconds") +
-  facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1, scales = "free")
-  
+  theme_minimal() + 
+  theme(legend.position =c(0.3, 0.6)) +
+  geom_line(aes(group = Thinning), linewidth = 1.25) +
+  geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
+  labs(x = "Rate of total cells",
+       y = "Seconds") 
+```
+
+
+
+```{r}
+inhom = df %>%
+    filter(type == "inhomogeneous",
+           abundance != 0.2,
+         value < .5, value > -.4
+         ) %>%
+  mutate(Thinning = factor(p_thin)) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, Thinning), fill = Thinning)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous") +
+  theme_minimal() +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = c(0.6, 0.2),
+        legend.direction = "horizontal") +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+inhomClust = df %>%
+    filter(type == "inhomogeneous + clustered",
+           abundance != 0.2,
+         value < 7.5,value > -.4,
+         !is.na(lambda_n)
+         ) %>%
+  mutate(Thinning = factor(p_thin)) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, Thinning), fill = Thinning)) +
+  geom_boxplot() +
+  labs(x = "abundance",
+       y = "degree of clustering",
+       title = "Inhomogeneous + clustered") +
+  theme_minimal() +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "none",
+        legend.direction = "horizontal") +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+
+```
+
+
+
+```{r}
+inhom_var = df %>%
+    filter(type == "inhomogeneous",
+           abundance != 0.2
+         ) %>%
+  mutate(Thinning = factor(p_thin)) %>%
+  ggplot(aes(abundance, log(var), group = interaction(abundance, Thinning), fill = Thinning)) +
+  geom_boxplot() +
+    theme_minimal() +
+  theme(legend.position = "none",
+        legend.direction = "horizontal") +
+      labs(x = "abundance",
+       y = "log(variance)",
+       title = "Inhomogeneous") +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+
+
+inhomClust_var = df %>%
+    filter(type == "inhomogeneous + clustered",
+           abundance != 0.2,
+           !is.na(lambda_n)
+         ) %>%
+  mutate(Thinning = factor(p_thin)) %>%
+  ggplot(aes(abundance, log(var), group = interaction(abundance, Thinning), fill = Thinning)) +
+  geom_boxplot() +
+    theme_minimal() +
+    labs(x = "abundance",
+       y = "log(variance)",
+       title = "Inhomogeneous + clustered") +
+  theme(legend.position = "none",
+        legend.direction = "horizontal") +
+  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+```
+
+
+
+```{r fig_sim_kamplite, fig.width=10, fig.height=8}
+
+(inhom + inhomClust)/(inhom_var+inhomClust_var)
+```
+
+
+
+```{r fig_kamplite_times}
+p_time 
+```
+
+
+
+```{r fig_sim_kamplite2, fig.width=10, fig.height=10}
+
+p_time/(inhom + inhomClust)/(inhom_var+inhomClust_var)
 ```
 

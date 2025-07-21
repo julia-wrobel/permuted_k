@@ -1,6 +1,6 @@
 ####################################################################
 # Julia Wrobel
-# August 2024
+# August 2025
 #
 # This file produces simulations for univariate K under different data generation mechanisms
 # focusing on the variance/power. Runs 1000 iterations in chunks of 50 at a time.
@@ -122,7 +122,7 @@ ovarian = ovarian %>%
 
 
 marksvar = "immune"
-rvalues = seq(0, 200, length.out = 200) # fine grid of R values
+rvalues = seq(0, 200, by = 5) # fine grid of R values
 
 w = convexhull.xy(ovarian[["x"]], ovarian[["y"]])
 
@@ -134,24 +134,21 @@ pp_obj = ppp(ovarian[["x"]], ovarian[["y"]], window = w, marks = ovarian[[marksv
 ## Expectation
 ################################################################################
 
-k_expectation = get_k(pp_obj, rvec = rvalues, nperm = 1000)
+k_expectation = get_k(pp_obj, rvec = rvalues, nperm = 10000)
 
 ################################################################################
 ## Variance
 ################################################################################
 
 k_variance = get_k_power(pp_obj, rvec = rvalues)
-
-# variance code not currently optimized for multiple radii- would be good to implement this
-k_variance = k_variance %>%
-  mutate(time = ifelse(method == "kepd", time/length(rvalues), time))
+k_perm = get_k_power_permOnly(pp_obj,rvec = rvalues, nperm = 10000)
 
 ################################################################################
 ## Save results
 ################################################################################
 
 results = list(expectation = k_expectation,
-               variance = k_variance)
+               variance = bind_rows(k_variance, k_perm))
 
 filename = paste0(here::here("output", "VPdata"), "/", str_remove(ids[sample_index], ".im3"), ".RDA")
 save(results,

@@ -95,10 +95,12 @@ type1 = df_type1 %>%
          lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, type1_error, group = method,
              color = method, linetype = method)) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   scale_color_manual(values = my_colors) +
   geom_line(linewidth = 1.25) +
-  labs(y = "Type 1 error", x = expression(lambda[n])) +
+  labs(y = "Type 1 error", x = expression(lambda[n]),
+       title = "Homogeneous") +
+  ylim(0, 0.1) +
   geom_hline(yintercept = 0.05, linetype = 4) +
   theme(legend.position = "none") +
   facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
@@ -126,10 +128,12 @@ power = power_df %>%
   filter(type %in% c("homClust")) %>%
   ggplot(aes(lambda_n, power, group = method,
              color = method, linetype = method)) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   scale_color_manual(values = my_colors) +
   geom_line(linewidth = 1.25) +
-  labs(y = "Power", x = expression(lambda[n])) +
+  labs(y = "Power", x = expression(lambda[n]),
+       title = "Homogeneous + clustered") +
+  ylim(0.025, 1) +
   geom_hline(yintercept = 0.9, linetype = 4) +
   theme(legend.position = c(0.6, 0.4), legend.title = element_blank()) +
   facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
@@ -139,28 +143,20 @@ power = power_df %>%
 
 
 
-```{r fig_sim_power_hom, fig.height = 6}
-type1/power
-```
-
-
-
-### Inhom
-
-
 
 ```{r}
-type1 = df_type1 %>%
+type1_inhom = df_type1 %>%
   filter(type == "inhom",
          r == .25) %>%
   mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n)) %>%
   ggplot(aes(lambda_n, type1_error, group = method,
              color = method, linetype = method)) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   scale_color_manual(values = my_colors) +
   geom_line(linewidth = 1.25) +
-  labs(y = "Type 1 error", x = expression(lambda[n])) +
+  labs(y = "Type 1 error", x = expression(lambda[n]), title = "Inhomogeneous") +
+  ylim(0, 0.1) +
   geom_hline(yintercept = 0.05, linetype = 4) +
   theme(legend.position = "none") +
   facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
@@ -174,14 +170,15 @@ Power = P(reject Ho|H1 True)
 
 ```{r}
 
-power = power_df %>%
+power_inhom = power_df %>%
   filter(type %in% c("inhomClust")) %>%
   ggplot(aes(lambda_n, power, group = method,
              color = method, linetype = method)) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   scale_color_manual(values = my_colors) +
   geom_line(linewidth = 1.25) +
-  labs(y = "Power", x = expression(lambda[n])) +
+  labs(y = "Power", x = expression(lambda[n]), title = "Inhomogeneous + clustered") +
+  ylim(0.025, 1) +
   geom_hline(yintercept = 0.9, linetype = 4) +
   theme(legend.position = c(0.6, 0.4), legend.title = element_blank()) +
   facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
@@ -191,8 +188,11 @@ power = power_df %>%
 
 
 
-```{r fig_sim_power_inhom, fig.height = 6}
-type1/power
+
+
+```{r fig_sim_power, fig.height = 6}
+(type1 + type1_inhom)/(power + power_inhom)
 ```
+
 
 
