@@ -57,6 +57,9 @@ For the bivariate analysis we subset to subjects with at least 2 b-cells and at 
 ```{r}
 ovarian %>% 
   filter(tissue_category == "Tumor") %>%
+  mutate(phenotype = case_when(phenotype_cd19 == "CD19+" ~ "immune1",
+                                 phenotype_cd68 == "CD68+" ~ "immune2",
+                                 TRUE ~ "other")) %>%
   group_by(sample_id) %>%
   summarize(n = n(),
             m_cd19 = sum(phenotype == "immune1"),
@@ -107,7 +110,7 @@ times_df = df %>%
 
 # make degree of clustering dataset for use in survival analysis
 doc_df = df %>%
-  filter(r > 5) %>%
+  filter(r >= 5) %>%
   select(sample_id, method, r, csr, trans) %>%
   mutate(doc = trans - csr) 
 
@@ -155,9 +158,6 @@ clinical = patient_level_ovarian %>%
   left_join(doc_df) %>%
   filter(primary == 1)
 
-
-
-
 get_coxph = function(dat, rval, doc_method = "kamp", get_resi = TRUE){
   dat = filter(dat, r == rval, method == doc_method)  %>%
     mutate(doc = doc / 1000)
@@ -177,8 +177,6 @@ get_coxph = function(dat, rval, doc_method = "kamp", get_resi = TRUE){
       tidy(mod, exp = TRUE) %>%
       mutate(r = rval, method = doc_method)
   }
-  
-
 }
 
 safe_get_coxph <- possibly(
@@ -219,53 +217,6 @@ if(file.exists(filename)){
 }
 
 
-```
-
-
-
-## Out of sample survival prediction
-
-Here we do cross validation to get out of sample predictions using the model with K and KAMP, and assess predictive performance.  Choosing 3 radii.
-
-```{r, eval = FALSE}
-
-
-
-
-
-var(log(dat$epd), na.rm = TRUE)
-var(log(dat$k), na.rm = TRUE)
-
-median(log(dat$epd), na.rm = TRUE)
-median(log(dat$k), na.rm = TRUE)
-
-
-mean(dat$kerror)
-var(dat$kerror)
-cor(dat$kamp_std, dat$p_immune). # correlation is 0.3
-
-
-mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + log(epd), 
-              data = dat, x = TRUE, y = TRUE)
-
-mod_k = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
-              data = filter(clinical, r == 50), x = TRUE, y = TRUE)
-
-
-
-
-# Compute cross-validated Brier scores
-# Use pec to create prediction error curves with cross-validation
-brier_scores <- pec(
-  object = list("KAMP" = mod, "K" = mod_k),
-  formula = Surv(survival_time, event) ~ age + stage + p_immune + epd,
-  data =  filter(clinical, r == 50),
-  times = seq(20, 120, by = 10), # Specify time points for evaluation
-  exact = TRUE,
-  splitMethod = "cv3"
-)
-
-plot(brier_scores, xlab = "Time", ylab = "Brier Score", main = "Cross-Validated Brier Scores")
 ```
 
 

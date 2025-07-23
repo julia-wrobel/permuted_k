@@ -37,11 +37,12 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 # Define a custom color palette for the methods
 my_colors <- c(
   "K" = "#440154",
+  "Kinhom" = "#414487",
   "perm" = "#2A788E",
-  # perm wald = 22A884,
   "KAMP" = "#7AD151",
   "KAMP lite" = "#FDE725"
 )
+
 ```
 
 # Load data
@@ -53,6 +54,44 @@ load(here::here("data", "processed_ovarian_data.Rda"))
 ```
 
 
+# Load bivariate data
+
+```{r}
+files = list.files(here::here("output", "vpData_bivariate"))
+
+# call merge_files_vectraPolaris() defined in utils.R
+df_biv = map_dfr(files, merge_files_vectraPolaris, bivariate = TRUE)
+
+# make degree of clustering dataset for use in survival analysis
+doc_biv = df_biv %>%
+  filter(r >= 5) %>%
+  select(sample_id, method, r, csr, trans) %>%
+  mutate(doc = trans - csr) 
+
+
+# get pvalues 
+dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE) %>%
+  filter(method != "kperm approx") %>%
+    mutate(z = (khat-expectation) / sqrt(var),
+         pvalue = pnorm(-z),
+         method = ifelse(method == "kperm", "perm", method),
+         method = ifelse(method == "kamplite", "kamp_lite", method))  %>%
+  select(sample_id, r, method, var, pvalue)
+
+# get pvalues 
+dfp_biv = map_dfr(files, merge_files_vectraPolaris, variance = TRUE, 
+              bivariate = TRUE) %>%
+    mutate(z = (khat-expectation) / sqrt(var),
+         pvalue = pnorm(-z))  %>%
+  select(-z, -Z)
+
+
+
+dfp = left_join(doc_df, dfp) %>%
+      mutate(method = factor(method, levels = c("k", "kinhom", "perm", 
+                                                "kamp", "kamp_lite"),
+                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")))
+```
 
 
 # Process data analysis results
@@ -73,46 +112,34 @@ df = map_dfr(files, merge_files_vectraPolaris)
 
 # make comp times dataset
 times_df = df %>%
-  select(sample_id, time_k, time_kepd, time_kepdThin, time_kperm) %>%
+  select(sample_id, method, time) %>%
   distinct() %>%
-  pivot_longer(time_k:time_kperm, 
-               names_to = "method", values_to = "time",
-               names_prefix = "time_") %>%
-  mutate(method = factor(method, levels = c("k","kperm", "kepd", "kepdThin"),
-                         labels = c("K", "perm", "KAMP", "KAMP lite")))
+  mutate(method = factor(method, levels = c("k", "kinhom", "perm", "kamp", "kamp_lite"),
+                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")))
   
 
 # make degree of clustering dataset for use in survival analysis
 doc_df = df %>%
-  filter(r > 5) %>%
-  select(sample_id, r, ktheo, khat, kepd, kepdThin, kperm) %>%
-  #filter(round(r) %in% c(50, 100, 125, 150)) %>%
-  mutate(k = khat - ktheo,
-         perm = khat - kperm,
-         epd = khat - kepd,
-         epdThin = khat - kepdThin,
-          r = round(r)) %>%
-  select(sample_id, r, k, epd) 
-
+  filter(r >= 5) %>%
+  select(sample_id, method, r, csr, trans) %>%
+  mutate(doc = trans - csr) 
 
 
 # get pvalues 
 dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE) %>%
+  filter(method != "kperm approx") %>%
     mutate(z = (khat-expectation) / sqrt(var),
-         pvalue = pnorm(-z))  %>%
-  select(-z)
+         pvalue = pnorm(-z),
+         method = ifelse(method == "kperm", "perm", method),
+         method = ifelse(method == "kamplite", "kamp_lite", method))  %>%
+  select(sample_id, r, method, var, pvalue)
 
-# calculate DOC for the variance data
-dfp2 = dfp %>% 
-  mutate(csr = pi * r^2,
-         DoC = khat-expectation,
-         k = khat - csr) %>%
-  select(sample_id, r, method, DoC, k) %>%
-  pivot_wider(names_from = method, values_from = DoC) %>%
-  pivot_longer(k:kperm, names_to = "method", values_to = "DoC")
- 
 
-dfp = left_join(dfp2, dfp)
+dfp = left_join(doc_df, dfp) %>%
+      mutate(method = factor(method, levels = c("k", "kinhom", "perm", 
+                                                "kamp", "kamp_lite"),
+                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")))
+
 ```
 
 
@@ -122,9 +149,8 @@ dfp = left_join(dfp2, dfp)
 
 # Analysis
 
-## Survival analysis
 
-Do across radii. 
+
 
 ```{r}
 # calculate abundance of immune cells
@@ -146,45 +172,6 @@ clinical = patient_level_ovarian %>%
   left_join(p_immune) %>%
   left_join(doc_df) %>%
   filter(primary == 1)
-
-
-
-
-get_coxph = function(dat, rval, epd = TRUE){
-  dat = filter(dat, r == rval)
-  
-  if(epd){
-      mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + epd, 
-              data = dat)
-  }else{
-      mod = coxph(Surv(survival_time, event) ~ age + stage + p_immune + k, 
-              data = dat)
-  }
-  
-  resi_object = resi(mod, data = dat)
-  
-  
-  tidy(mod, exp = TRUE) %>%
-    mutate(r = rval, epd = epd, 
-           resi = coef(resi_object)$RESI,
-           lower = coef(resi_object)$"2.5%",
-           upper = coef(resi_object)$"97.5%")
-}
-
-
-
-
-filename = here::here("output",
-                      "VPdata_coxPH_results.RData")
-
-if(file.exists(filename)){
-	load(filename)
-}else{
-  cph = bind_rows(map_dfr(unique(clinical$r), get_coxph, dat = clinical), 
-                map_dfr(unique(clinical$r), get_coxph, dat = clinical, FALSE))
-  
-  save(cph, file = filename)
-}
 
 
 ```
@@ -217,7 +204,7 @@ clinical %>%
 
 Here we generate empirical densities for use in data-driven simulation
 
-```{r}
+```{r, eval = FALSE}
 dat = filter(clinical, r == 101) %>%
   mutate(mean_k = mean((epd + k)/2),
          sd_k = sd((epd + k)/2),
@@ -261,25 +248,6 @@ times_df %>%
 ```
 
 
-```{r}
-times_df %>%
-  #mutate(time = time/60) %>%
-  filter(method != "k") %>%
-  ggplot(aes(method, log(time), color = method, 
-             group = method)) +
-  geom_boxplot() +
-  theme_minimal() + 
-  coord_flip() +
-  theme(legend.position = "none",
-        legend.title = element_blank()) +
-  labs(x = expression(lambda[m]),
-       y = "log seconds") 
-  
-```
-
-
-
-
 
 # Figures
 
@@ -314,9 +282,9 @@ plot_k = function(idnum){
   
 
  p2 =   df %>%
-    select(sample_id, r, k = khat, theo = ktheo, epd = kepd) %>%
-    pivot_longer(k:epd, names_to = "K", values_to = "value") %>%
-    filter(sample_id == idnum, K != "epd", r <=150) %>%
+    filter(sample_id == idnum, method %in% c("k"), r <=150) %>%
+    select(sample_id, r, k = trans, theo = csr) %>%
+   pivot_longer(k:theo, names_to = "K", values_to = "value") %>%
     mutate(K = factor(K, levels = c("k", "theo"))) %>%
     ggplot(aes(r, value, color = K, linetype = K)) +
     geom_line(linewidth = 1.25) +
@@ -335,8 +303,12 @@ plot_k = function(idnum){
   
   
   p3 = df %>%
-    select(sample_id, r, k = khat, theo = ktheo, epd = kepd, epdlite = kepdThin) %>%
-    pivot_longer(k:epdlite, names_to = "K", values_to = "value") %>%
+    select(-time) %>%
+    filter(method %in% c("k", "kamp", "kamp_lite")) %>%
+    pivot_wider(names_from = method, values_from = csr) %>%
+    select(sample_id, r, theo = k, k = trans, epd = kamp, 
+           epdlite = kamp_lite) %>%
+   pivot_longer(theo:epdlite, names_to = "K", values_to = "value") %>%
     filter(sample_id == idnum, r <=150) %>%
     mutate(K = factor(K, levels = c("k", "epd",  "epdlite", "theo"))) %>%
     ggplot(aes(r, value, color = K, linetype = K)) +
@@ -393,7 +365,7 @@ wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[2]]
 ## Figure 6
 
 
-Same as Figure 1, but including EPD CSR value
+Same as Figure 1, but including KAMP CSR value
 
 ```{r fig_3subjs_epd, fig.height = 6, fig.width = 12}
 
@@ -410,174 +382,36 @@ wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[3]]
 ## Figure 7
 
 
-Boxplots of expectation, variance, and p-value for KAMP, KAMP lite, perm
+Boxplots of expectation, variance, and p-value for KAMP, KAMP lite, perm.
+
+ALSO ADD DEGREE OF COLOCALIZATION TO THIS FIGURE
 
 ```{r fig_ovarian_within}
 df_pval = dfp %>% 
-  filter(#pvalue != -Inf,
-         sample_id %in% unique(clinical$sample_id)) %>%
+  filter(sample_id %in% unique(clinical$sample_id)) %>%
   mutate(r = round(r),
-         pvalue = log(pvalue)
+         pvalue = log(pvalue),
+         DoC = doc/1000,
          ) %>%
   filter(r %in% c(25, 101, 150, 200)
          ) %>%
   select(sample_id, r, method, DoC, pvalue) %>%
   pivot_longer(DoC:pvalue, names_to = "stat", values_to = "value") %>%
-  filter(!(stat == "var" & method == "kperm"),
-         !(stat == "pvalue" & method == "kperm"),
-         !(method == "kperm"),
-         !(stat == "pvalue" & method == "k")) %>%
-  mutate(r = ifelse(r == 101, 100, r),
-         r = factor(r),
+  mutate(r = factor(r),
          stat = factor(stat, levels = c("DoC", "var", "pvalue"),
-                       labels = c("Degree of clustering", "log(Variance)", "log(p-value)")),
-         method = factor(method, levels = c("k", "kperm", "kepd", "kepdThin"),
-                         labels = c("K", "perm", "KAMP", "KAMP lite")))
+                       labels = c("Degree of clustering", "Variance", "log(p-value)"))) 
 
 df_pval %>%
-  filter(value < 200000, value > -400) %>%
+  filter(value < 3750, value > -2000) %>%
   ggplot(aes(r, value, group = interaction(r, method), fill = method)) +
   geom_boxplot() +
   facet_wrap(~stat, scales = "free") +
-  #geom_hline(data = filter(dfp, stat == "log(p-value)"), aes(yintercept = log(0.05)), 
-   #          color = "red", linetype = "dashed") %>%
-  #geom_hline(yintercept = 0.05, linetype = 2) +
   scale_fill_manual(values = my_colors) +
-  labs(x = "radius")
+  labs(x = "radius") %>%
   theme(legend.title = element_blank(),
-        legend.position = c(0.8, 0.15),
+        legend.position = "bottom",
         legend.text = element_text(size = 12),
         legend.direction = "horizontal")
 ```
 
-
-
-## Figure 8
-
-
-
-```{r}
-
-cph = cph %>% 
-  mutate(method = ifelse(epd == TRUE, "KAMP", "K"),
-         term = ifelse(term %in% c("k", "epd"), "doc", term),
-         r = round(r),
-             significant = case_when(
-      method == "K" & p.value < 0.05 ~ "K",
-      method == "KAMP" & p.value < 0.05 ~ "KAMP",
-      TRUE ~ NA),
-      significant = factor(significant, levels = c("K", "kperm", "KAMP", "kepdThin"),
-                         labels = c("K", "perm", "KAMP", "KAMP lite")),
-      significant_es = case_when(
-      method == "K" & lower > 0  ~ "K",
-      method == "KAMP"  & lower > 0 ~ "KAMP",
-      TRUE ~ NA),)
-```
-
-
-
-
-Think about how to expand this plot. Also want areas of significance.
-
-```{r}
-es = cph %>%
-  filter(term == "doc") %>%
-  ggplot(aes(r, resi, group = method, color = method)) +
-    geom_ribbon(
-    data = filter(cph, term == "doc",significant_es == "K"),
-    aes(ymin = 0, ymax = lower, fill = "K"),
-    alpha = 0.2,
-    color = NA
-  ) +
-    geom_ribbon(
-    data = filter(cph, term == "doc",significant_es == "KAMP"),
-    aes(ymin = 0, ymax = lower, fill = "KAMP"),
-    alpha = 0.2,
-    color = NA
-  ) +
-  geom_line() +
-  geom_line(aes(y = upper), linetype = 3) +
-  geom_line(aes(y = lower), linetype = 3) +
-  scale_fill_manual(values = my_colors, guide = "none") +
-   scale_color_manual(values = my_colors) +
-  labs(x = "radius", y = "Effect size",
-       title = "Standardized effect size for degree of clustering") +
-  theme(legend.title = element_blank(), legend.position = "none",
-        legend.text = element_text(size = 12)) +
-   geom_hline(yintercept = 0, linetype = 2, color = "gray")
-```
-
-
-```{r}
-pp = cph %>%
-  filter(term == "doc") %>%
-  ggplot(aes(r, p.value, group = method, color = method)) +
-  geom_ribbon(
-    data = filter(cph, term == "doc",significant == "K"),
-    aes(ymin = 0, ymax = p.value, fill = "K"),
-    alpha = 0.2,
-    color = NA
-  ) +
-    geom_ribbon(
-    data = filter(cph, term == "doc",significant == "KAMP"),
-    aes(ymin = 0, ymax = p.value, fill = "KAMP"),
-    alpha = 0.2,
-    color = NA
-  ) +
-  geom_line() +
-  scale_color_manual(values = my_colors) +
-  scale_fill_manual(values = my_colors, guide = "none") +
-  labs(x = "radius", y = "P-value",
-       title = "P-value for degree of clustering hazard ratio") +
-  theme(legend.title = element_blank(), legend.position = c(0.5, 0.6),
-        legend.text = element_text(size = 12)) +
-  geom_hline(yintercept = 0.05, linetype = 2, color = "gray")
-```
-
-
-
-```{r fig_vpData_survival2, fig.height=6}
-es/pp
-```
-
-
-
-
-```{r fig_vpData_survival, fig.width = 9}
-
-p_df = cph %>%
-  filter(r %in% c(25, 125, 175), term == "doc") %>%
-  mutate(term = factor(term, label = "DoC")) %>%
-  mutate(#p = format.pval(p.value, digits = 1),
-         p = round(p.value, 2),
-        resi = -0.1) %>%
-  select(term, r, method, p,  resi)
-
-cph %>%
-  filter(r %in% c(25, 125, 175)) %>%
-  select(term, r, resi, lower, upper, p.value, method) %>%
-  mutate(term = factor(term,
-                       levels = c("age", "stage", "p_immune", "doc"),
-                       labels = c("age", "stage", "abundance", "DoC"))) %>%
-  ggplot(aes(term, resi, color = method, 
-             group = interaction(term, method), 
-             linetype = method)) +
-  geom_point(size = 2, position = position_dodge(0.5)) +
-  theme_bw() +
-  labs(y = "standardized effect size") +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = .7,
-                position = position_dodge(0.5)) +
-  theme(axis.title.x = element_blank(),
-                axis.text.x = element_text(angle = 45,  hjust=1,
-                                   size = 12),
-        strip.text = element_text(size = 12),
-        axis.title.y = element_text(size = 13),
-        legend.title = element_blank(),
-        legend.position = c(0.1, 0.15)) +
-  geom_text(data = p_df, aes(label = p),  
-            position = position_dodgev(0.1)) +
-  geom_hline(yintercept = 0, linetype = 3) +
-  scale_color_manual(values = my_colors) +
-  facet_wrap(~r, labeller = label_both)
-```
 

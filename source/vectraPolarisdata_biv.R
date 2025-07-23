@@ -148,13 +148,14 @@ pp_obj = ppp(ovarian[["x"]], ovarian[["y"]], window = w, marks = ovarian[[marksv
 ## Expectation
 ################################################################################
 
-k_expectation = get_k_bivariate(pp_obj, rvec = rvalues, nperm = 1000)
+k_expectation = get_k_bivariate(pp_obj, rvec = rvalues, nperm = 10000)
 
 ################################################################################
 ## Variance
 ################################################################################
 
 k_variance = get_k_power_biv(pp_obj, rvec = rvalues)
+k_perm = get_k_power_permOnly_biv(pp_obj,rvec = rvalues, nperm = 10000)
 
 
 
@@ -163,7 +164,7 @@ k_variance = get_k_power_biv(pp_obj, rvec = rvalues)
 ################################################################################
 
 results = list(expectation = k_expectation,
-               variance = k_variance)
+               variance = bind_rows(k_variance, k_perm))
 
 filename = paste0(here::here("output", "VPdata_bivariate"), "/", str_remove(ids[sample_index], ".im3"), ".RDA")
 save(results,
