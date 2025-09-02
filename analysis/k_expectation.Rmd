@@ -233,7 +233,7 @@ p_times = times_df %>%
 ```
 
 
-```{r fig_sim_expectation, fig.width=10, fig.height=8}
+```{r fig_sim_expectation, fig.width=10, fig.height=6}
 
 (p_hom+p_inhom)/(phomClust+pinhomClust)
 

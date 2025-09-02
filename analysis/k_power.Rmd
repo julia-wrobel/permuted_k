@@ -190,7 +190,7 @@ power_inhom = power_df %>%
 
 
 
-```{r fig_sim_power, fig.height = 6}
+```{r fig_sim_power, fig.height = 4, fig.width = 10}
 (type1 + type1_inhom)/(power + power_inhom)
 ```
 

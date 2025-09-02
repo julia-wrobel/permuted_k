@@ -7,7 +7,7 @@ This project runs simulations for the Ripley's K permutations project
 
 ## Workflow
 
-1. Run the file `source/simulations/20240429_simulations.R`. This file runs simulations for different scenarios.The code is parallelized. Sources the following files:
+1. Run the file `source/simulations/20240429_simulations.R`. This file runs simulations for different scenarios. Sources the following files:
   * `source/simulate_ppp.R`: contains functions used to define a simulated point process dataset
   * `source/utils_fast.R`: contains function for calculating the different methods compared, including K inhomogeneous, fperm, perm. For a given simulated dataset, this function returns a matrix of the estimated K values for the different methods, as well as computation times.
 
