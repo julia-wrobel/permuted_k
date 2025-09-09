@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=25-30%10
+#SBATCH --array=1-30%10
 #SBATCH --job-name=univariate_kamplite_job
 #SBATCH --partition=encore
 #SBATCH --output=univariate_kamplite.out
