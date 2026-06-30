@@ -16,7 +16,6 @@ highlighter: highlight.js
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(survival)
-library(mxfda)
 library(patchwork)
 library(broom)
 library(viridis)
@@ -36,12 +35,13 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 
 # Define a custom color palette for the methods
+
 my_colors <- c(
-  "K" = "#440154",
-  "Kinhom" = "#414487",
-  "perm" = "#2A788E",
-  "KAMP" = "#7AD151",
-  "KAMP lite" = "#FDE725"
+  "K"         = "#6A3D9A",  # purple
+  "Kinhom"    = "#1F78B4",  # blue
+  "perm"      = "#009E73",  # bluish green
+  "KAMP"      = "#D55E00",  # vermillion
+  "KAMP lite" = "#E69F00"   # orange
 )
 
 ```
@@ -256,7 +256,8 @@ plot_k = function(idnum){
     geom_point(data = filter(dat_tumor, immune == "immune"), 
                size = 0.5, color = "darkred") +
     labs(x = "x position", y = "y position") +
-    theme(axis.text = element_blank(), legend.position = "none") 
+    theme(axis.text = element_blank(), legend.position = "none",
+          axis.title = element_text(size = 12)) 
   
 
  p2 =   df %>%
@@ -265,7 +266,7 @@ plot_k = function(idnum){
    pivot_longer(k:theo, names_to = "K", values_to = "value") %>%
     mutate(K = factor(K, levels = c("k", "theo"))) %>%
     ggplot(aes(r, value, color = K, linetype = K)) +
-    geom_line(linewidth = 1.25) +
+    geom_line(linewidth = 1.75) +
     scale_colour_manual(values = c("#440154", "gray"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
                                    theo = TeX("$pi r^2$"))) +
@@ -275,8 +276,9 @@ plot_k = function(idnum){
     labs(y = TeX("K(r)")) +
     theme(legend.position = c(.2,.75),
           legend.title=element_blank(),
+          axis.title = element_text(size = 14),
           axis.text.y = element_blank(),
-          legend.text = element_text(size = 12))
+          legend.text = element_text(size = 14))
 
   
   
@@ -290,8 +292,40 @@ plot_k = function(idnum){
     filter(sample_id == idnum, r <=150) %>%
     mutate(K = factor(K, levels = c("k", "epd",  "epdlite", "theo"))) %>%
     ggplot(aes(r, value, color = K, linetype = K)) +
-    geom_line(linewidth = 1.25) +
-    scale_colour_manual(values = c("#440154", "#7AD151", "#FDE725", "gray"),
+    geom_line(linewidth = 1.75) +
+    scale_colour_manual(values = c("#6A3D9A", "#D55E00", "#E69F00", "gray"),
+                        labels = c(k = TeX("$\\hat{K}(r)$"),
+                                   epd = TeX("$E_{KAMP}[\\hat{K}(r)]$"),
+                                   epdlite = TeX("$E_{KAMPlite}[\\hat{K}(r)]$"),
+                                   theo = TeX("$\\pi r^2$"))) +
+        scale_linetype_manual(values = c(1, 4, 2, 5),
+                        labels = c(k = TeX("$\\hat{K}(r)$"),
+                                   epd = TeX("$E_{KAMP}[\\hat{K}(r)]$"),
+                                   epdlite = TeX("$E_{KAMPlite}[\\hat{K}(r)]$"),
+                                   theo = TeX("$\\pi r^2$"))
+                        ) +
+    labs(y = TeX("K(r)")) +
+    theme(legend.position = c(.25,.7),
+          legend.title=element_blank(),
+          axis.title = element_text(size = 14),
+          axis.text.y = element_blank(),
+          legend.text = element_text(size = 14),
+          legend.background = element_rect(fill = "transparent", color = NA))
+
+
+    
+  p4 = df %>%
+    select(-time) %>%
+    filter(method %in% c("k", "kamp", "kamp_lite")) %>%
+    pivot_wider(names_from = method, values_from = csr) %>%
+    select(sample_id, r, theo = k, k = trans, epd = kamp, 
+           epdlite = kamp_lite) %>%
+   pivot_longer(theo:epdlite, names_to = "K", values_to = "value") %>%
+    filter(sample_id == idnum, r <=150, K != "epdlite") %>%
+    mutate(K = factor(K, levels = c("k", "epd",  "epdlite", "theo"))) %>%
+    ggplot(aes(r, value, color = K, linetype = K)) +
+    geom_line(linewidth = 1.75) +
+    scale_colour_manual(values = c("#6A3D9A", "#D55E00", "#E69F00", "gray"),
                         labels = c(k = TeX("$\\hat{K}(r)$"),
                                    epd = TeX("$E_{KAMP}[\\hat{K}(r)]$"),
                                    epdlite = TeX("$E_{KAMPlite}[\\hat{K}(r)]$"),
@@ -306,12 +340,12 @@ plot_k = function(idnum){
     theme(legend.position = c(.25,.7),
           legend.title=element_blank(),
           axis.text.y = element_blank(),
-          legend.text = element_text(size = 12),
+          axis.title = element_text(size = 14),
+          legend.text = element_text(size = 14),
           legend.background = element_rect(fill = "transparent", color = NA))
 
-
   
-  list(p1, p2, p3)
+  list(p1, p2, p3, p4)
   
 }
 ```
@@ -354,6 +388,18 @@ wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[3]]
 ```
 
 
+## Figure 6 talks
+
+
+Pared down version for talk
+
+```{r fig_3subjs_talk, fig.height = 6, fig.width = 12}
+
+
+wrap_plots(list(high[[1]], low[[1]], patchy[[1]], patchy_noClust[[1]], high[[4]], low[[4]], patchy[[4]], patchy_noClust[[4]]), ncol = 4)
+
+
+```
 
 
 
@@ -550,42 +596,6 @@ if(file.exists(filename)){
 
 
 
-## Functional data analysis
-
-```{r, eval = FALSE}
-
-spatial = ovarian %>%
-  filter(tissue_category == "Tumor", sample_id %in% ids_biv) %>%
-  mutate(phenotype = case_when(phenotype_cd19 == "CD19+" ~ "immune1",
-                                 phenotype_cd68 == "CD68+" ~ "immune2",
-                                 TRUE ~ "other")) %>%
-  dplyr::select(cell_id, sample_id, x, y, phenotype) 
-
-mxFDAobject = make_mxfda(metadata = clinical,
-                         spatial = spatial,
-                         subject_key = "sample_id",
-                         sample_key = "sample_id")
-
-rm(spatial)
-
-mxFDAobject = extract_summary_functions(mxFDAobject,
-                summary_func = Kcross,
-                extract_func = bivariate,
-                r_vec = seq(0, 200, by = 5),
-                edge_correction = "trans",
-                markvar = "phenotype",
-                empirical_CSR = TRUE,
-                mark1 = "immune1",
-                mark2 = "immune2")
-
-
-ovarian_FDA = run_fcm(mxFDAobject, model_name = "fit_lfcm",
-                      formula = survival_time ~ age + stage, event = "event",
-                      metric = "biv k", r = "r", value = "fundiff",
-                      afcm = FALSE)
-```
-
-
 
 # Figures
 
@@ -718,15 +728,60 @@ pp = cph %>%
        title = "P-value for degree of colocalization hazard ratio") +
   theme(legend.title = element_blank(), legend.position = c(0.6, 0.4),
         legend.text = element_text(size = 12)) +
+    geom_vline(xintercept = 50, linetype = 2, color = "gray") +
   geom_hline(yintercept = 0.05, linetype = 2, color = "gray")
 ```
 
 
 
-```{r fig_vpData_survival_biv, fig.width = 10, fig.height=9}
-es/pp/cindex/r50 + plot_layout(heights = c(2, 2, 1.5, 1))
+```{r fig_vpData_survival_biv, fig.width = 10, fig.height=6}
+pp/cindex/r50 + plot_layout(heights = c(1.5, 1.5, 1))
 ```
 
 
+## Figure 8 talk
+
+
+```{r}
+r50 = cph_noResi %>%
+  filter(r == 50, method != "kinhom"
+         ) %>%
+  mutate(
+    lower = exp(log(estimate) - 1.96 * std.error),
+    upper = exp(log(estimate) + 1.96 * std.error),
+    sig = case_when(
+  p.value < 0.001 ~ "***",
+  p.value < 0.01 ~ "**",
+  p.value < 0.05 ~ "*",
+  TRUE ~ "")
+  ) %>%
+  mutate(method = factor(method, levels = c("k", "kinhom", "perm", 
+                                                "kamp", "kamp_lite"),
+                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")),
+         term = factor(term, levels = c("doc", "p_immune", "age", "stage"),
+                       labels = c("Degree of Colocalization at r = 50", "Proportion of immune cells",
+                                  "Age", "Cancer stage"))) %>%
+  filter(method != "KAMP lite", method != "perm") %>%
+  ggplot(aes(x = method, y = estimate, color = method)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
+  geom_text(aes(label = sig), vjust = -1.2, color = "black", size = 6) +
+  geom_hline(yintercept = 1, linetype = "dotted", color = "grey40") +
+  facet_wrap(~ term, scales = "free_y", nrow = 1) +
+  labs(
+    x = "Method",
+    y = "Hazard Ratio",
+    title = "Hazard ratios for all model covariates at r = 50"
+  ) +
+  scale_color_manual(values = my_colors) +
+  theme_minimal()  +
+  theme(legend.position = "none") 
+  
+```
+
+
+```{r fig_vpData_survival_talk}
+pp/r50 + plot_layout(heights = c(1.5, 1))
+```
 
 

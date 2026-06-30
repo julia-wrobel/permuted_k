@@ -33,11 +33,11 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 my_colors <- c(
-  "K" = "#440154",
-  "Kinhom" = "#414487",
-  "perm" = "#2A788E",
-  "KAMP" = "#7AD151",
-  "KAMP lite" = "#FDE725"
+  "K"         = "#6A3D9A",  # purple
+  "Kinhom"    = "#1F78B4",  # blue
+  "perm"      = "#009E73",  # bluish green
+  "KAMP"      = "#D55E00",  # vermillion
+  "KAMP lite" = "#E69F00"   # orange
 )
 
 theme_set(theme_bw() + theme(legend.position = "bottom"))
@@ -88,7 +88,8 @@ times_df = df %>%
                          labels = c("K", "Kinhom","perm", "KAMP",
                                     "KAMP lite"))) %>%
   group_by(method, type, lambda_n, abundance) %>%
-  summarize(time = median(time)) %>%
+  summarize(time = median(time), lower = quantile(time, .25), 
+            upper = quantile(time, .75)) %>%
   ungroup() 
 
 df = df %>%
@@ -122,13 +123,14 @@ df = df %>%
 
 p_hom = df %>%
     filter(type == "homogeneous",
-         value < .5, value > -.5
+         value < .5, value > -.5,
+         lambda_n != "lambda[n]: 5000"
          ) %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Homogeneous") +
+  labs(x = "Proportion of immune cells",
+       y = "Degree of clustering",
+       title = "Null: homogeneous") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
@@ -140,13 +142,14 @@ p_hom = df %>%
 
 p_inhom = df %>%
     filter(type == "inhomogeneous",
-         value < .5, value > -.4
+         value < .5, value > -.4,
+         lambda_n != "lambda[n]: 5000"
          ) %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Inhomogeneous") +
+  labs(x = "Proportion of immune cells",
+       y = "Degree of clustering",
+       title = "Null: inhomogeneous") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
@@ -156,13 +159,14 @@ p_inhom = df %>%
 
 phomClust = df %>%
     filter(type == "homogeneous + clustered",
-         value < 10
+         value < 10,
+         lambda_n != "lambda[n]: 5000"
          ) %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Homogeneous + clustered") +
+  labs(x = "Proportion of immune cells",
+       y = "Degree of clustering",
+       title = "Alternative: homogeneous + clustered") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
@@ -172,13 +176,14 @@ phomClust = df %>%
 
 pinhomClust = df %>%
     filter(type == "inhomogeneous + clustered",
-         value < 7.5
+         value < 7.5,
+         lambda_n != "lambda[n]: 5000"
          ) %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
   geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Inhomogeneous + clustered") +
+  labs(x = "Proportion of immune cells",
+       y = "Degree of clustering",
+       title = "Alternative: inhomogeneous + clustered") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
@@ -216,7 +221,7 @@ p_times = times_df %>%
   geom_line(aes(group = method), linewidth = 1.25) +
   geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
   scale_color_manual(values = my_colors) +
-  labs(x = "abundance",
+  labs(x = "Proportion of immune cells",
        y = "median log(seconds)") +
   facet_wrap(~lambda_n, labeller = label_parsed, nrow = 1)
   
@@ -226,7 +231,7 @@ p_times = times_df %>%
 
 
 
-```{r fig_sim_expectation2, fig.width=10, fig.height=12}
+```{r fig_sim_expectation2, fig.width=10, fig.height=8}
 
 (p_hom+p_inhom)/(phomClust+pinhomClust)/p_times
 
