@@ -1,6 +1,5 @@
 ####################################################################
 # Julia Wrobel
-# August 2024
 #
 # This file produces simulations for univariate K under different data generation mechanisms
 # focusing on the variance/power. Runs 1000 iterations in chunks of 50 at a time.
@@ -46,7 +45,7 @@ abundance = c(0.01, 0.1, 0.2)
 type = c("hom", "inhom", "homClust", "inhomClust")
 nperm = 1000
 seed_start = 2000
-N_iter = 1100
+N_iter = 1000
 maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
@@ -122,7 +121,7 @@ for(i in 1:100){
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_variance", "varyAbundance", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_variance", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 
