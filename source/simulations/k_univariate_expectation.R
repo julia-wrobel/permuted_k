@@ -116,7 +116,7 @@ for(iter in 1:N_iter){
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_expectation", "varyAbundance_scSim", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "univariate_expectation", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 
