@@ -39,7 +39,7 @@ source(here::here("source", "utils_k.R"))
 
 n = c(1000, 2000, 5000, 10000)
 abundance = c(0.01, 0.1, 0.2)
-type = c("hom", "inhom", "homClust", "inhomClust")
+type = c("hom", "inhom", "homClust", "inhomClust", "bothClust")
 nperm = 1000
 seed_start = 1000
 N_iter = 50
@@ -53,7 +53,7 @@ params = expand.grid(seed_start = seed_start,
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_expectation", "varyAbundance_scSim"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_expectation"), Date), showWarnings = FALSE)
 
 
 ## define number of simulations and parameter scenario
@@ -87,7 +87,7 @@ for(iter in 1:N_iter){
   set.seed(seed.iter)
 
   # simulate data
-  if(type %in% c("hom", "inhom")){
+  if(type %in% c("hom")){
     ppp_obj <- mxsim_univariate(n, abundance, type)
   }else{
     ppp_obj <- sim_scSpatial(n, abundance, type)

@@ -21,7 +21,7 @@ get_permutation_distribution = function(ppp_obj, rvalue, bivariate = FALSE) {
   i_idx = cp$i
   j_idx = cp$j
 
-  # --- edge corrections for pairs within radius r only ---
+  # edge corrections for pairs within radius r only
   if (W_win$type == "rectangle") {
     W_width  = diff(W_win$xrange)
     W_height = diff(W_win$yrange)
@@ -57,7 +57,6 @@ get_permutation_distribution = function(ppp_obj, rvalue, bivariate = FALSE) {
     e_vals  = ifelse(overlap > 0, areaW / overlap, 0)
   }
 
-  # --- R statistics via sparse row sums, no n x n matrix built ---
   R0 = sum(e_vals)
   R1 = sum(e_vals^2)
 

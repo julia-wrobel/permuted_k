@@ -59,7 +59,7 @@ params = expand.grid(seed_start = seed_start,
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_variance", "varyAbundance"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "univariate_variance"), Date), showWarnings = FALSE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {

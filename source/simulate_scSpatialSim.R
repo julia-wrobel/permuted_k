@@ -5,9 +5,13 @@
 ## lambda_m: intensity for marker positive cells
 ## holes: should an image be simulated with or without holes
 ## type: defines the distribution of the point process- homogeneous, inhomogeneous, or clustered
+##   "homClust"/"inhomClust": cell positivity is spatially clustered (kernel-based)
+##   "inhom": inhomogeneous background (holes) but cell positivity is unclustered (random)
+##   "bothClust": background and immune cells are both spatially clustered via
+##     independent kernels (same mechanism as immune clustering), no holes
 sim_scSpatial <- function(lambda_n,
                           abundance,
-                          type = c("homClust", "inhomClust"),
+                          type = c("homClust", "inhomClust", "inhom", "bothClust"),
                           bivariate = FALSE){
 
 
@@ -18,13 +22,21 @@ sim_scSpatial <- function(lambda_n,
     sim_object = GenerateSpatialPattern(sim_object,
                                         lambda = lambda_n/100)
 
-    sim_object = GenerateCellPositivity(sim_object,
-                                        k = 25,
-                                        sdmin = .7, sdmax = .71,
-                                        step_size = 0.1, cores = 1,
-                                        probs = c(0.0, 1, 1))
+    if(type == "inhom"){
+      sim_object = GenerateCellPositivity(sim_object,
+                                          sdmin = .7, sdmax = .71,
+                                          step_size = 0.1, cores = 1,
+                                          probs = c(0.0, 1, 1),
+                                          no_kernel = TRUE)
+    }else{
+      sim_object = GenerateCellPositivity(sim_object,
+                                          k = 25,
+                                          sdmin = .7, sdmax = .71,
+                                          step_size = 0.1, cores = 1,
+                                          probs = c(0.0, 1, 1))
+    }
 
-    if(type == "inhomClust"){
+    if(type %in% c("inhomClust", "inhom")){
       sim_object = GenerateHoles(sim_object, step_size = 0.1, cores = 1)
     }
 
@@ -49,7 +61,7 @@ sim_scSpatial <- function(lambda_n,
       pp$immune2[sample(indices, nthin)] <- 0
     }
 
-    if(type == "inhomClust"){
+    if(type %in% c("inhomClust", "inhom")){
       pp = pp %>%
         rename(hole = `Hole Assignment`) %>%
         filter(hole == "Keep") %>%
@@ -64,8 +76,11 @@ sim_scSpatial <- function(lambda_n,
 
 
 
-  }else{
-    sim_object = CreateSimulationObject(sims = 1, cell_types = 1, window = wm)
+  }else if(type == "bothClust"){
+    # background and immune cells are each driven by their own k=25 kernel;
+    # random = TRUE keeps the two kernels independent (default just copies
+    # cell 1's kernel to cell 2). No holes.
+    sim_object = CreateSimulationObject(sims = 1, cell_types = 2, window = wm)
     sim_object = GenerateSpatialPattern(sim_object,
                                         lambda = lambda_n/100)
 
@@ -73,9 +88,57 @@ sim_scSpatial <- function(lambda_n,
                                         k = 25,
                                         sdmin = .7, sdmax = .71,
                                         step_size = 0.1, cores = 1,
-                                        probs = c(0.0, 1))
+                                        probs = c(0.0, 1),
+                                        random = TRUE)
 
-    if(type == "inhomClust"){
+    # keep both assignments unresolved (don't randomly break ties) so the
+    # background cluster can take priority over the immune cluster below
+    pp = CreateSpatialList(sim_object, single_df = TRUE, multihit_action = "keep") %>%
+      rename(bg_cluster = `Cell 1 Assignment`,
+             immune = `Cell 2 Assignment`)
+
+    # drop points that fall in neither kernel field, so both populations
+    # show up as visually distinct clusters rather than one clustered
+    # population sitting in a diffuse uniform background
+    pp = pp %>%
+      filter(bg_cluster == 1 | immune == 1) %>%
+      mutate(immune = case_when(bg_cluster == 1 ~ 0,
+                                immune == 1 ~ 1,
+                                TRUE ~ 0))
+
+    phat = sum(pp$immune)/nrow(pp)
+
+    if(phat > abundance){
+      nhat = nrow(pp)
+      nthin = round((phat - abundance) * nhat)
+
+      indices = which(pp$immune == 1)
+      pp$immune[sample(indices, nthin)] <- 0
+    }
+
+    pp = pp %>%
+      mutate(immune = ifelse(immune == 0, "background", "immune"))
+
+  }else{
+    sim_object = CreateSimulationObject(sims = 1, cell_types = 1, window = wm)
+    sim_object = GenerateSpatialPattern(sim_object,
+                                        lambda = lambda_n/100)
+
+    if(type == "inhom"){
+      sim_object = GenerateCellPositivity(sim_object,
+                                          sdmin = .7, sdmax = .71,
+                                          step_size = 0.1, cores = 1,
+                                          probs = c(0.0, 1),
+                                          no_kernel = TRUE)
+    }else{
+      sim_object = GenerateCellPositivity(sim_object,
+                                          k = 25,
+                                          sdmin = .7, sdmax = .71,
+                                          step_size = 0.1, cores = 1,
+                                          probs = c(0.0, 1))
+    }
+
+    if(type %in% c("inhomClust", "inhom")){
       sim_object = GenerateHoles(sim_object, step_size = 0.1, cores = 1)
     }
     # get dataframe with the info you want
@@ -92,7 +155,7 @@ sim_scSpatial <- function(lambda_n,
       pp$immune[sample(indices, nthin)] <- 0
     }
 
-    if(type == "inhomClust"){
+    if(type %in% c("inhomClust", "inhom")){
       pp = pp %>%
         rename(hole = `Hole Assignment`) %>%
         filter(hole == "Keep") %>%
@@ -103,7 +166,7 @@ sim_scSpatial <- function(lambda_n,
     pp = pp %>%
       mutate(immune = ifelse(immune == 0, "background", "immune"))
 
-  }# end bivariarte = FALSE
+  }# end bivariate = FALSE
 
   return(spatstat.geom::ppp(pp$x, pp$y, window = wm,  marks = factor(pp$immune)))
 
