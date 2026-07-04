@@ -1,6 +1,5 @@
 ####################################################################
 # Julia Wrobel
-# August 2024
 #
 # This file produces simulations for univariate K under different data generation mechanisms
 # comparing fperm to CSR to Kinhom,
@@ -58,7 +57,7 @@ dir.create(file.path(here::here("output", "univariate_expectation"), Date), show
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 3
+  scenario = 1
   #scenario = 3
   N_iter = 2
 }else{
@@ -88,7 +87,7 @@ for(iter in 1:N_iter){
 
   # simulate data
   if(type %in% c("hom")){
-    ppp_obj <- mxsim_univariate(n, abundance, type)
+    ppp_obj <- mxsim(n, abundance, type)
   }else{
     ppp_obj <- sim_scSpatial(n, abundance, type)
   }
