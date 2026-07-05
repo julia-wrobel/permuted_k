@@ -93,7 +93,8 @@ times_df = df %>%
 
 df = df %>%
   filter((type %in% c("hom", "inhom") & r == 0.5) | (type %in% c("homClust", "inhomClust", "bothClust") & r == 1.25),
-         lambda_n != 2000) %>%
+         lambda_n != 2000,
+         abundance != "0.01") %>%
   mutate(abundance = factor(abundance),
          value = trans-csr)  %>%
   filter(value < 25) %>%
@@ -143,7 +144,7 @@ p_hom = df %>%
 
 p_inhom = df %>%
     filter(type == "inhomogeneous",
-         value < .5, value > -.4,
+         value < .4, value > -.4,
          lambda_n != "lambda[n]: 5000"
          ) %>%
   ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
@@ -221,7 +222,7 @@ pBothClust = df %>%
 
 ```{r}
 p_times = times_df %>%
-  filter(type == "inhom") %>%
+  filter(type == "hom") %>%
   mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n,
                            labels = c("lambda[n]: 1000",
@@ -267,4 +268,8 @@ p_times
 ```
 
 
+
+```{r fig_sim_bothClust}
+(phomClust + pBothClust)
+```
 

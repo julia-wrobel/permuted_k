@@ -442,6 +442,7 @@ df_pval_biv = dfp_biv %>%
 ```
 
 
+
 ```{r fig_ovarian_within, fig.width = 10, fig.height = 6}
 univ = df_pval %>%
   filter(value < 200, value > -2000) %>%
@@ -593,6 +594,22 @@ if(file.exists(filename)){
 
 
 
+Range of $r$ values where $p$ is significant.
+
+```{r}
+cph %>%
+  filter(method == "kamp",
+         term == "doc",
+         p.value <= 0.05) %>%
+  pull(r)
+
+cph %>%
+  filter(method == "kamp",
+         term == "age",
+         p.value <= 0.05)
+
+```
+
 
 
 
@@ -601,7 +618,7 @@ if(file.exists(filename)){
 
 
 
-## Figure 8
+## Figure 8 (bivariate)
 
 ```{r}
 cindex = cph_noResi %>%
@@ -735,53 +752,6 @@ pp = cph %>%
 
 
 ```{r fig_vpData_survival_biv, fig.width = 10, fig.height=6}
-pp/cindex/r50 + plot_layout(heights = c(1.5, 1.5, 1))
+es/pp/cindex+ plot_layout(heights = c(1.5, 1.5, 1.5))
 ```
-
-
-## Figure 8 talk
-
-
-```{r}
-r50 = cph_noResi %>%
-  filter(r == 50, method != "kinhom"
-         ) %>%
-  mutate(
-    lower = exp(log(estimate) - 1.96 * std.error),
-    upper = exp(log(estimate) + 1.96 * std.error),
-    sig = case_when(
-  p.value < 0.001 ~ "***",
-  p.value < 0.01 ~ "**",
-  p.value < 0.05 ~ "*",
-  TRUE ~ "")
-  ) %>%
-  mutate(method = factor(method, levels = c("k", "kinhom", "perm", 
-                                                "kamp", "kamp_lite"),
-                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")),
-         term = factor(term, levels = c("doc", "p_immune", "age", "stage"),
-                       labels = c("Degree of Colocalization at r = 50", "Proportion of immune cells",
-                                  "Age", "Cancer stage"))) %>%
-  filter(method != "KAMP lite", method != "perm") %>%
-  ggplot(aes(x = method, y = estimate, color = method)) +
-  geom_point(size = 3) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
-  geom_text(aes(label = sig), vjust = -1.2, color = "black", size = 6) +
-  geom_hline(yintercept = 1, linetype = "dotted", color = "grey40") +
-  facet_wrap(~ term, scales = "free_y", nrow = 1) +
-  labs(
-    x = "Method",
-    y = "Hazard Ratio",
-    title = "Hazard ratios for all model covariates at r = 50"
-  ) +
-  scale_color_manual(values = my_colors) +
-  theme_minimal()  +
-  theme(legend.position = "none") 
-  
-```
-
-
-```{r fig_vpData_survival_talk}
-pp/r50 + plot_layout(heights = c(1.5, 1))
-```
-
 

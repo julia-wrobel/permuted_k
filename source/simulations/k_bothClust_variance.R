@@ -1,8 +1,13 @@
 ####################################################################
 # Julia Wrobel
 #
-# This file produces simulations for univariate K under different data generation mechanisms
-# comparing fperm to CSR to Kinhom,
+# Standalone simulation for the "bothClust" scenario only: immune and
+# background cells are each clustered via their own independent kernel
+# (see sim_scSpatial(), type = "bothClust"), addressing the reviewer request
+# for a scenario with true clustering in both immune and normal cells.
+# This script computes the Type I error / power comparison (kamp, kamp_lite,
+# kperm, kperm approx), mirroring k_univariate_variance.R but restricted to
+# type = "bothClust". Runs 1000 iterations in chunks of 100 at a time.
 ####################################################################
 
 suppressPackageStartupMessages(library(spatstat.random))
@@ -14,6 +19,7 @@ suppressPackageStartupMessages(library(purrr))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(tictoc))
 suppressPackageStartupMessages(library(scSpatialSIM))
+
 
 
 wd = getwd()
@@ -28,9 +34,9 @@ if(substring(wd, 2, 6) == "Users"){
 ###############################################################
 ## define or source functions used in code below
 ###############################################################
-source(here::here("source", "simulate_ppp.R"))
-source(here::here("source", "simulate_scSpatialSim.R"))
 source(here::here("source", "utils_k.R"))
+source(here::here("source", "simulate_scSpatialSim.R"))
+source(here::here("source", "get_permutation_distribution.R"))
 
 ###############################################################
 ## set simulation design elements
@@ -38,27 +44,28 @@ source(here::here("source", "utils_k.R"))
 
 n = c(1000, 2000, 5000, 10000)
 abundance = c(0.01, 0.1, 0.2)
-type = c("hom", "inhom", "homClust", "inhomClust", "bothClust")
+type = "bothClust"
 nperm = 1000
-seed_start = 1000
-N_iter = 50
+seed_start = 2000
+N_iter = 1000
+maxiter = (seq(1, N_iter, by = 100)-1) + 100
 
 params = expand.grid(seed_start = seed_start,
                      type = type,
                      n = n,
-                     abundance = abundance)  %>%
+                     abundance = abundance,
+                     maxiter = (seq(1, N_iter, by = 100)-1) + 100) %>%
   mutate(m = n * abundance) %>%
   filter(m >=5)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_expectation"), Date), showWarnings = FALSE)
-
+dir.create(file.path(here::here("output", "bothClust_variance"), Date),
+          showWarnings = FALSE, recursive = TRUE)
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 25
-  #scenario = 3
+  scenario = 1
   N_iter = 2
 }else{
   # defined from batch script params
@@ -74,53 +81,48 @@ if(doLocal) {
 ## set simulation design elements
 ###############################################################
 n = params$n[scenario]
-m = params$m[scenario]
 abundance = params$abundance[scenario]
+m = n * abundance
 type = params$type[scenario]
 SEED.START = params$seed_start[scenario]
+maxiter = params$maxiter[scenario]
 
-results = vector("list", length = N_iter)
-for(iter in 1:N_iter){
+iter_vec = (maxiter-99):maxiter
+
+results = vector("list", length = 100)
+for(i in 1:100){
   # set seed
-  seed.iter = (SEED.START - 1)*N_iter + iter
+  seed.iter = (SEED.START - 1)*N_iter + iter_vec[i]
   set.seed(seed.iter)
 
-  # simulate data
-  if(type %in% c("hom")){
-    ppp_obj <- mxsim(n, abundance, type)
-  }else{
-    ppp_obj <- sim_scSpatial(n, abundance, type)
-  }
-
+  # simulate data: immune and background each clustered via independent kernels
+  ppp_obj <- sim_scSpatial(n, abundance, type)
 
   ################################################################################
   ##
   # Calculate Ripley's K and fperm statistics
-  k_full = get_k(ppp_obj, rvec = c(0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2), nperm = nperm)
+  k_kamp = get_k_power(ppp_obj)
+  k_perm = get_k_power_permOnly(ppp_obj, nperm = nperm)
 
   lambda_n = n
   lambda_m = m
-  res = mutate(k_full, n = ppp_obj$n, m = subset(ppp_obj, marks == "immune")$n) %>%
-    mutate(iter = iter,
+  res = mutate(bind_rows(k_kamp, k_perm),n = ppp_obj$n, m = subset(ppp_obj, marks == "immune")$n) %>%
+    mutate(iter = iter_vec[i],
            scenario = scenario,
            seed = seed.iter,
            type = type,
-           nperm = nperm,
            lambda_n = lambda_n,
            abundance = abundance)
 
 
-  results[[iter]] = res
-
+  results[[i]] = res
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_expectation", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "bothClust_variance", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 
 ###############################################################
 ## end sim
 ###############################################################
-
-

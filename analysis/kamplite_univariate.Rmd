@@ -83,9 +83,7 @@ df = df %>%
                                        "inhomogeneous",
                                        "homogeneous + clustered",
                                        "inhomogeneous + clustered")),
-         lambda_n = str_c("lambda[n]: ", lambda_n),
-         lambda_n = factor(lambda_n, levels = c("lambda[n]: 1000", "lambda[n]: 2000",
-                                                "lambda[n]: 5000", "lambda[n]: 10000"))) 
+         lambda_n = factor(lambda_n)) 
 ```
 
 
@@ -96,8 +94,8 @@ df = df %>%
 ```{r}
  p_time = times_df %>%
   filter(type == "inhom",
-         abundance == 0.1) %>%
-  group_by(p_thin, lambda_n) %>%
+         p_thin != 0.9) %>%
+  group_by(p_thin, lambda_n, abundance) %>%
   summarize(time = median(time)) %>%
   ungroup() %>%
   mutate(Thinning = factor(p_thin),
@@ -106,109 +104,59 @@ df = df %>%
              group = interaction(lambda_n, Thinning))) +
   geom_point() +
   geom_line(aes(group = Thinning), linewidth = 1.25) +
-  #geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
   theme_minimal() + 
-  theme(legend.position =c(0.3, 0.6)) +
+  theme(legend.position =c(0.75, 0.6)) +
   geom_line(aes(group = Thinning), linewidth = 1.25) +
   geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
-  labs(x = "Rate of total cells",
-       y = "Seconds") 
+  labs(x = expression(lambda[n]),
+       y = "Median time in seconds",
+       title = "Computation time") +
+   facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
+
+
 ```
 
 
+
+Power = P(reject Ho|H1 True)
 
 ```{r}
-inhom = df %>%
-    filter(type == "inhomogeneous",
-           abundance != 0.2,
-         value < .5, value > -.4
-         ) %>%
-  mutate(Thinning = factor(p_thin)) %>%
-  ggplot(aes(abundance, value, group = interaction(abundance, Thinning), fill = Thinning)) +
-  geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Inhomogeneous") +
-  theme_minimal() +
-  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = c(0.6, 0.2),
-        legend.direction = "horizontal") +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+power_df = df %>%
+    filter(type %in% c("inhomogeneous + clustered"),
+           r == 1.25,
+           p_thin != 0.9) %>%
+  group_by(type, p_thin, lambda_n, abundance) %>%
+  summarize(power = sum(pvalue<= 0.05)/n(),
+            n_sim = n()) %>%
+  ungroup() %>%
+    mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n),
+         p_thin = factor(p_thin))
 
-inhomClust = df %>%
-    filter(type == "inhomogeneous + clustered",
-           abundance != 0.2,
-         value < 7.5,value > -.4,
-         !is.na(lambda_n)
-         ) %>%
-  mutate(Thinning = factor(p_thin)) %>%
-  ggplot(aes(abundance, value, group = interaction(abundance, Thinning), fill = Thinning)) +
-  geom_boxplot() +
-  labs(x = "abundance",
-       y = "degree of clustering",
-       title = "Inhomogeneous + clustered") +
-  theme_minimal() +
-  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = "none",
-        legend.direction = "horizontal") +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+p_power = power_df %>%
+  ggplot(aes(lambda_n, power, group = p_thin,
+             color = p_thin, linetype = p_thin)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1.25) +
+  labs(y = "Power", x = expression(lambda[n]),
+       title = "Power") +
+  ylim(0.025, 1) +
+  geom_hline(yintercept = 0.9, linetype = 4) +
+  theme_minimal() + 
+  theme(legend.position = "none", legend.title = element_blank()) +
+  facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
+
 
 
 ```
 
 
 
-```{r}
-inhom_var = df %>%
-    filter(type == "inhomogeneous",
-           abundance != 0.2
-         ) %>%
-  mutate(Thinning = factor(p_thin)) %>%
-  ggplot(aes(abundance, log(var), group = interaction(abundance, Thinning), fill = Thinning)) +
-  geom_boxplot() +
-    theme_minimal() +
-  theme(legend.position = "none",
-        legend.direction = "horizontal") +
-      labs(x = "abundance",
-       y = "log(variance)",
-       title = "Inhomogeneous") +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
 
-
-inhomClust_var = df %>%
-    filter(type == "inhomogeneous + clustered",
-           abundance != 0.2,
-           !is.na(lambda_n)
-         ) %>%
-  mutate(Thinning = factor(p_thin)) %>%
-  ggplot(aes(abundance, log(var), group = interaction(abundance, Thinning), fill = Thinning)) +
-  geom_boxplot() +
-    theme_minimal() +
-    labs(x = "abundance",
-       y = "log(variance)",
-       title = "Inhomogeneous + clustered") +
-  theme(legend.position = "none",
-        legend.direction = "horizontal") +
-  facet_wrap(~lambda_n,  nrow = 1, labeller = label_parsed) 
+```{r fig_kamplite_times, fig.height = 6}
+p_time /p_power
 ```
 
 
 
-```{r fig_sim_kamplite, fig.width=10, fig.height=8}
-
-(inhom + inhomClust)/(inhom_var+inhomClust_var)
-```
-
-
-
-```{r fig_kamplite_times}
-p_time 
-```
-
-
-
-```{r fig_sim_kamplite2, fig.width=10, fig.height=10}
-
-p_time/(inhom + inhomClust)/(inhom_var+inhomClust_var)
-```
 

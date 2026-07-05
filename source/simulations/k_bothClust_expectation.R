@@ -1,8 +1,13 @@
 ####################################################################
 # Julia Wrobel
 #
-# This file produces simulations for univariate K under different data generation mechanisms
-# comparing fperm to CSR to Kinhom,
+# Standalone simulation for the "bothClust" scenario only: immune and
+# background cells are each clustered via their own independent kernel
+# (see sim_scSpatial(), type = "bothClust"), addressing the reviewer request
+# for a scenario with true clustering in both immune and normal cells.
+# This script computes the expectation/bias comparison (k, kinhom, kamp,
+# kamp_lite, perm), mirroring k_univariate_expectation.R but restricted to
+# type = "bothClust".
 ####################################################################
 
 suppressPackageStartupMessages(library(spatstat.random))
@@ -28,7 +33,6 @@ if(substring(wd, 2, 6) == "Users"){
 ###############################################################
 ## define or source functions used in code below
 ###############################################################
-source(here::here("source", "simulate_ppp.R"))
 source(here::here("source", "simulate_scSpatialSim.R"))
 source(here::here("source", "utils_k.R"))
 
@@ -38,7 +42,7 @@ source(here::here("source", "utils_k.R"))
 
 n = c(1000, 2000, 5000, 10000)
 abundance = c(0.01, 0.1, 0.2)
-type = c("hom", "inhom", "homClust", "inhomClust", "bothClust")
+type = "bothClust"
 nperm = 1000
 seed_start = 1000
 N_iter = 50
@@ -48,17 +52,17 @@ params = expand.grid(seed_start = seed_start,
                      n = n,
                      abundance = abundance)  %>%
   mutate(m = n * abundance) %>%
-  filter(m >=5)
+  filter(m >= 5)
 
 ## record date for analysis; create directory for results
 Date = gsub("-", "", Sys.Date())
-dir.create(file.path(here::here("output", "univariate_expectation"), Date), showWarnings = FALSE)
+dir.create(file.path(here::here("output", "bothClust_expectation"), Date),
+          showWarnings = FALSE, recursive = TRUE)
 
 
 ## define number of simulations and parameter scenario
 if(doLocal) {
-  scenario = 25
-  #scenario = 3
+  scenario = 1
   N_iter = 2
 }else{
   # defined from batch script params
@@ -85,13 +89,8 @@ for(iter in 1:N_iter){
   seed.iter = (SEED.START - 1)*N_iter + iter
   set.seed(seed.iter)
 
-  # simulate data
-  if(type %in% c("hom")){
-    ppp_obj <- mxsim(n, abundance, type)
-  }else{
-    ppp_obj <- sim_scSpatial(n, abundance, type)
-  }
-
+  # simulate data: immune and background each clustered via independent kernels
+  ppp_obj <- sim_scSpatial(n, abundance, type)
 
   ################################################################################
   ##
@@ -115,12 +114,10 @@ for(iter in 1:N_iter){
 } # end for loop
 
 
-filename = paste0(here::here("output", "univariate_expectation", Date), "/", scenario, ".RDA")
+filename = paste0(here::here("output", "bothClust_expectation", Date), "/", scenario, ".RDA")
 save(results,
      file = filename)
 
 ###############################################################
 ## end sim
 ###############################################################
-
-

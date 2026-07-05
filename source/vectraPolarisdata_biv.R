@@ -1,12 +1,9 @@
 ####################################################################
 # Julia Wrobel
-# August 2024
 #
 # This file produces simulations for univariate K under different data generation mechanisms
 # focusing on the variance/power. Runs 1000 iterations in chunks of 50 at a time.
 ####################################################################
-
-#suppressPackageStartupMessages()
 
 
 suppressPackageStartupMessages(library(spatstat.random))
