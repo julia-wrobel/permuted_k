@@ -1,13 +1,16 @@
 ####################################################################
 # Julia Wrobel
 #
-# Standalone simulation for the "bothClust" scenario only: immune and
-# background cells are each clustered via their own independent kernel
-# (see sim_scSpatial(), type = "bothClust"), addressing the reviewer request
-# for a scenario with true clustering in both immune and normal cells.
+# Standalone simulation for the "bothClust" family of scenarios: immune and
+# background cells are both clustered, addressing the reviewer request for a
+# scenario with true clustering in both immune and normal cells.
+#   "bothClust":    immune and background clustered via independent kernels
+#                   (separate cluster locations)
+#   "bothClustDep": immune kernel dependent on (correlated with) the
+#                   background kernel (overlapping/coincident clusters)
 # This script computes the expectation/bias comparison (k, kinhom, kamp,
 # kamp_lite, perm), mirroring k_univariate_expectation.R but restricted to
-# type = "bothClust".
+# these two types.
 ####################################################################
 
 suppressPackageStartupMessages(library(spatstat.random))
@@ -42,7 +45,7 @@ source(here::here("source", "utils_k.R"))
 
 n = c(1000, 2000, 5000, 10000)
 abundance = c(0.01, 0.1, 0.2)
-type = "bothClust"
+type = c("bothClust", "bothClustDep")
 nperm = 1000
 seed_start = 1000
 N_iter = 50

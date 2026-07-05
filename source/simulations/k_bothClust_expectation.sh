@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-12
+#SBATCH --array=1-24
 #SBATCH --job-name=bothClust_expectation_job
 #SBATCH --partition=wrobel,encore
 #SBATCH --output=bothClust_expectation.out

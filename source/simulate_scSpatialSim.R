@@ -9,9 +9,12 @@
 ##   "inhom": inhomogeneous background (holes) but cell positivity is unclustered (random)
 ##   "bothClust": background and immune cells are both spatially clustered via
 ##     independent kernels (same mechanism as immune clustering), no holes
+##   "bothClustDep": same as "bothClust" but the immune kernel is dependent on
+##     (correlated with) the background kernel instead of independent -
+##     clusters overlap/coincide rather than occupying separate locations
 sim_scSpatial <- function(lambda_n,
                           abundance,
-                          type = c("homClust", "inhomClust", "inhom", "bothClust"),
+                          type = c("homClust", "inhomClust", "inhom", "bothClust", "bothClustDep"),
                           bivariate = FALSE){
 
 
@@ -76,10 +79,13 @@ sim_scSpatial <- function(lambda_n,
 
 
 
-  }else if(type == "bothClust"){
-    # background and immune cells are each driven by their own k=25 kernel;
-    # random = TRUE keeps the two kernels independent (default just copies
-    # cell 1's kernel to cell 2). No holes.
+  }else if(type %in% c("bothClust", "bothClustDep")){
+    # background and immune cells are each driven by their own k=25 kernel.
+    # "bothClust": random = TRUE keeps the two kernels independent (separate
+    #   cluster locations).
+    # "bothClustDep": random = FALSE makes the immune kernel dependent on
+    #   (correlated with) the background kernel, so clusters overlap/coincide
+    #   instead of occupying separate locations. No holes in either case.
     sim_object = CreateSimulationObject(sims = 1, cell_types = 2, window = wm)
     sim_object = GenerateSpatialPattern(sim_object,
                                         lambda = lambda_n/100)
@@ -89,7 +95,7 @@ sim_scSpatial <- function(lambda_n,
                                         sdmin = .7, sdmax = .71,
                                         step_size = 0.1, cores = 1,
                                         probs = c(0.0, 1),
-                                        random = TRUE)
+                                        random = (type == "bothClust"))
 
     # keep both assignments unresolved (don't randomly break ties) so the
     # background cluster can take priority over the immune cluster below

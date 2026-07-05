@@ -79,12 +79,12 @@ times_df = df %>%
                          labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")))
   
 
+
 # make degree of clustering dataset for use in survival analysis
 doc_df = df %>%
   filter(r >= 5) %>%
   select(sample_id, method, r, csr, trans) %>%
   mutate(doc = trans - csr) 
-
 
 # get pvalues 
 dfp = map_dfr(files, merge_files_vectraPolaris, variance = TRUE) %>%
@@ -133,6 +133,7 @@ doc_biv = df_biv %>%
   filter(r >= 5) %>%
   select(sample_id, method, r, csr, trans) %>%
   mutate(doc = trans - csr) 
+
 
 
 # get pvalues 
@@ -509,7 +510,10 @@ ovarian %>%
 
 
 
-## Survival analysis
+
+
+
+## Survival analysis- bivariate
 
 ```{r}
 # calculate abundance of immune cells
@@ -612,8 +616,6 @@ cph %>%
 
 
 
-
-
 # Figures
 
 
@@ -651,44 +653,6 @@ cph = cph %>%
       method == "kamp"  & lower > 0 ~ "KAMP",
       TRUE ~ NA),
       method = factor(method, levels = c("k", "kamp"), labels = c("K", "KAMP")))
-```
-
-
-
-```{r}
-r50 = cph_noResi %>%
-  filter(r == 50, method != "kinhom"
-         ) %>%
-  mutate(
-    lower = exp(log(estimate) - 1.96 * std.error),
-    upper = exp(log(estimate) + 1.96 * std.error),
-    sig = case_when(
-  p.value < 0.001 ~ "***",
-  p.value < 0.01 ~ "**",
-  p.value < 0.05 ~ "*",
-  TRUE ~ "")
-  ) %>%
-  mutate(method = factor(method, levels = c("k", "kinhom", "perm", 
-                                                "kamp", "kamp_lite"),
-                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")),
-         term = factor(term, levels = c("doc", "p_immune", "age", "stage"),
-                       labels = c("Degree of Colocalization at r = 50", "Proportion of immune cells",
-                                  "Age", "Cancer stage"))) %>%
-  ggplot(aes(x = method, y = estimate, color = method)) +
-  geom_point(size = 3) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
-  geom_text(aes(label = sig), vjust = -1.2, color = "black", size = 6) +
-  geom_hline(yintercept = 1, linetype = "dotted", color = "grey40") +
-  facet_wrap(~ term, scales = "free_y", nrow = 1) +
-  labs(
-    x = "Method",
-    y = "Hazard Ratio",
-    title = "Hazard ratios for all model covariates at r = 50"
-  ) +
-  scale_color_manual(values = my_colors) +
-  theme_minimal()  +
-  theme(legend.position = "none") 
-  
 ```
 
 
@@ -752,6 +716,159 @@ pp = cph %>%
 
 
 ```{r fig_vpData_survival_biv, fig.width = 10, fig.height=6}
+es/pp/cindex+ plot_layout(heights = c(1.5, 1.5, 1.5))
+```
+
+
+
+
+# Survival analysis- univariate
+
+
+```{r}
+# univariate clustering dataset for use in survival analysis
+clinical = patient_level_ovarian %>%
+  select(sample_id,  age = age_at_diagnosis, stage = stage_bin,
+         survival_time, event = death, primary) %>%
+  filter(sample_id %in% unique(doc_biv$sample_id)) %>%
+  distinct() %>%
+  left_join(p_immune) %>%
+  left_join(doc_df) %>%
+  filter(primary == 1)
+
+
+```
+
+
+
+```{r}
+filename = here::here("output",
+                      "VPdata_coxPH_results_univariate.RData")
+
+if(file.exists(filename)){
+	load(filename)
+}else{
+  kamp = map_dfr(unique(clinical$r), get_coxph, dat = clinical, 
+                 doc_method = "kamp")
+  k = map_dfr(unique(clinical$r), get_coxph, dat = clinical, 
+              doc_method = "k")
+   
+  cph = bind_rows(kamp, k)
+  
+  kamp = map_dfr(unique(clinical$r), get_coxph, dat = clinical, 
+                 doc_method = "kamp", get_resi = FALSE)
+  k = map_dfr(unique(clinical$r), get_coxph, dat = clinical, 
+              doc_method = "k", get_resi = FALSE)
+
+ cph_noResi = bind_rows(kamp, k)
+  
+  save(cph, cph_noResi, file = filename)
+  
+  
+}
+
+```
+
+
+
+
+
+```{r}
+cph = cph %>% 
+  filter(method %in% c("k", "kamp")) %>%
+  mutate(significant = case_when(
+      method == "k" & p.value < 0.05 ~ "K",
+      method == "kamp" & p.value < 0.05 ~ "KAMP",
+      TRUE ~ NA),
+      significant = factor(significant, levels = c("K", "KAMP")),
+      significant_es = case_when(
+      method == "k" & lower > 0  ~ "K",
+      method == "kamp"  & lower > 0 ~ "KAMP",
+      TRUE ~ NA),
+      method = factor(method, levels = c("k", "kamp"), labels = c("K", "KAMP")))
+```
+
+
+
+```{r}
+es = cph %>%
+  filter(term == "doc") %>%
+  ggplot(aes(r, resi, group = method, color = method)) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant_es == "K"),
+    aes(ymin = 0, ymax = lower, fill = "K"),
+    alpha = 0.2,
+    color = NA
+  ) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant_es == "KAMP"),
+    aes(ymin = 0, ymax = lower, fill = "KAMP"),
+    alpha = 0.2,
+    color = NA
+  ) +
+  geom_line(linewidth = 1.3) +
+  geom_line(aes(y = upper), linetype = 3) +
+  geom_line(aes(y = lower), linetype = 3) +
+  scale_fill_manual(values = my_colors, guide = "none") +
+   scale_color_manual(values = my_colors) +
+  labs(x = "Radius", y = "Effect size",
+       title = "Standardized effect size for degree of colocalization") +
+  theme(legend.title = element_blank(), legend.position = "none",
+        legend.text = element_text(size = 12)) +
+   geom_hline(yintercept = 0, linetype = 2, color = "gray")
+```
+
+
+```{r}
+pp = cph %>%
+  filter(term == "doc") %>%
+  ggplot(aes(r, p.value, group = method, color = method)) +
+  geom_ribbon(
+    data = filter(cph, term == "doc",significant == "K"),
+    aes(ymin = 0, ymax = p.value, fill = "K"),
+    alpha = 0.2,
+    color = NA
+  ) +
+    geom_ribbon(
+    data = filter(cph, term == "doc",significant == "KAMP"),
+    aes(ymin = 0, ymax = p.value, fill = "KAMP"),
+    alpha = 0.2,
+    color = NA
+  ) +
+  geom_line(linewidth = 1.3) +
+  scale_color_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors, guide = "none") +
+  labs(x = "Radius", y = "P-value",
+       title = "P-value for degree of colocalization hazard ratio") +
+  theme(legend.title = element_blank(), legend.position = c(0.6, 0.4),
+        legend.text = element_text(size = 12)) +
+    geom_vline(xintercept = 50, linetype = 2, color = "gray") +
+  geom_hline(yintercept = 0.05, linetype = 2, color = "gray")
+```
+
+
+
+
+```{r}
+cindex = cph_noResi %>%
+   mutate(method = factor(method, levels = c("k", "kinhom", "perm", 
+                                                "kamp", "kamp_lite"),
+                         labels = c("K", "Kinhom", "perm", "KAMP", "KAMP lite")),
+         term = factor(term, levels = c("doc", "p_immune", "age", "stage"))) %>%
+  dplyr::select(r, method, cindex) %>%
+  distinct() %>%
+  ggplot(aes(r, cindex, group = method, color = method, linetype = method)) +
+  geom_line(linewidth = 1.3) +
+  labs(x = "Radius",y = "Concordance index")+
+  theme(legend.position = c(0.7, 0.8),
+        legend.title = element_blank(),
+        legend.direction = "horizontal") +
+  scale_color_manual(values = my_colors)  
+```
+
+
+
+```{r fig_vpData_survival_uni, fig.width = 10, fig.height=6}
 es/pp/cindex+ plot_layout(heights = c(1.5, 1.5, 1.5))
 ```
 

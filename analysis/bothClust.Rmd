@@ -1,0 +1,168 @@
+---
+title: "bothClust simulation results"
+author: "Julia Wrobel"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+hitheme: tomorrow
+highlighter: highlight.js
+---
+
+# Overview
+
+This file loads and plots results from the standalone "bothClust" simulation scripts
+(`source/simulations/k_bothClust_expectation.R` and `source/simulations/k_bothClust_variance.R`),
+addressing the reviewer request for a scenario with true clustering in both immune and
+background cells. Two variants are compared:
+
+- `bothClust`: immune and background clustered via **independent** kernels (separate
+  cluster locations).
+- `bothClustDep`: immune kernel **dependent** on (correlated with) the background
+  kernel (overlapping/coincident clusters) - a harder scenario where the immune-specific
+  signal is confounded with local background density.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(viridis)
+library(spatstat.random)
+library(patchwork)
+library(latex2exp)
+
+knitr::opts_chunk$set(echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 4,
+  fig.path = '../output/'
+)
+
+my_colors <- c(
+  "K"         = "#6A3D9A",  # purple
+  "Kinhom"    = "#1F78B4",  # blue
+  "perm"      = "#009E73",  # bluish green
+  "KAMP"      = "#D55E00",  # vermillion
+  "KAMP lite" = "#E69F00"   # orange
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+# Source code
+
+Source file for consolidating simulations
+
+```{r}
+source(here::here("source", "utils.R"))
+```
+
+
+# Expectation: degree of clustering
+
+Loads results from `output/bothClust_expectation/`, produced by
+`k_bothClust_expectation.R`. Same "degree of clustering" statistic
+(`trans - csr`) used in `k_expectation.Rmd`'s `pBothClust` figure, computed
+here from the standalone bothClust-only run.
+
+```{r}
+files_exp = list.files(here::here("output", "bothClust_expectation"),
+                       full.names = TRUE, recursive = TRUE, pattern = ".RDA")
+
+df_exp = map_dfr(files_exp, merge_files)
+```
+
+```{r}
+df_exp = df_exp %>%
+  filter(r == 1.25,
+         abundance != 0.01) %>%
+  mutate(abundance = factor(abundance),
+         value = trans - csr,
+         method = factor(method,
+                         levels = c("k", "kinhom", "perm",
+                                    "kamp", "kamp_lite"),
+                         labels = c("K", "Kinhom", "perm", "KAMP",
+                                    "KAMP lite")),
+         type = factor(type, levels = c("bothClust", "bothClustDep"),
+                      labels = c("independent clusters", "dependent clusters")),
+         lambda_n = str_c("lambda[n]: ", lambda_n),
+         lambda_n = factor(lambda_n, levels = c("lambda[n]: 1000", "lambda[n]: 2000",
+                                                "lambda[n]: 5000", "lambda[n]: 10000")))
+
+# trim extreme outliers dynamically (rather than a hardcoded cutoff) since
+# combinatorics in get_permutation_distribution() can blow up at very low
+# immune cell counts
+bounds_exp = quantile(df_exp$value, c(0.01, 0.99), na.rm = TRUE)
+
+p_bothClust_expectation = df_exp %>%
+  filter(value >= bounds_exp[1], value <= bounds_exp[2]) %>%
+  ggplot(aes(abundance, value, group = interaction(abundance, method), fill = method)) +
+  geom_boxplot() +
+  labs(x = "Proportion of immune cells",
+       y = "Degree of clustering",
+       title = "Alternative: background and immune both clustered") +
+  theme_minimal() +
+  scale_fill_manual(values = my_colors) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray") +
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) +
+  facet_grid(type ~ lambda_n, labeller = labeller(lambda_n = label_parsed, type = label_value))
+
+p_bothClust_expectation
+```
+
+
+# Variance: power
+
+Loads results from `output/bothClust_variance/`, produced by
+`k_bothClust_variance.R`. Because immune cells are genuinely clustered
+(distinct from, in the independent case, or confounded with, in the
+dependent case, background clustering), this is a true alternative-hypothesis
+scenario: Power = P(reject H0 | H1 true).
+
+```{r}
+files_var = list.files(here::here("output", "bothClust_variance"),
+                       full.names = TRUE, recursive = TRUE, pattern = ".RDA")
+
+df_var = map_dfr(files_var, merge_files, variance = TRUE) %>%
+  filter(method != "kperm approx") %>%
+  mutate(method = factor(method, levels = c("kperm", "kamp", "kamplite"),
+                         labels = c("perm", "KAMP", "KAMP lite")),
+         type = factor(type, levels = c("bothClust", "bothClustDep"),
+                      labels = c("independent clusters", "dependent clusters")))
+```
+
+```{r}
+power_df = df_var %>%
+  filter(r == 0.25) %>%
+  group_by(type, method, lambda_n, abundance) %>%
+  summarize(power = sum(pvalue <= 0.05, na.rm = TRUE) / sum(!is.na(pvalue)),
+            n_sim = n(),
+            .groups = "drop") %>%
+  mutate(abundance = factor(abundance),
+         lambda_n = factor(lambda_n))
+
+power_df %>%
+  arrange(n_sim)
+
+p_bothClust_power = power_df %>%
+  ggplot(aes(lambda_n, power, group = method,
+             color = method, linetype = method)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = my_colors) +
+  geom_line(linewidth = 1.25) +
+  labs(y = "Power", x = expression(lambda[n]),
+       title = "Background and immune both clustered") +
+  ylim(0, 1) +
+  geom_hline(yintercept = 0.9, linetype = 4) +
+  theme(legend.position = "bottom", legend.title = element_blank()) +
+  facet_grid(type ~ abundance, labeller = labeller(abundance = label_both, type = label_value))
+
+p_bothClust_power
+```
+
+
+```{r fig_sim_bothClust_combined, fig.width=10, fig.height=8}
+p_bothClust_expectation / p_bothClust_power
+```
