@@ -76,7 +76,8 @@ df_exp = map_dfr(files_exp, merge_files)
 ```{r}
 df_exp = df_exp %>%
   filter(r == 1.25,
-         abundance != 0.01) %>%
+         abundance != 0.01,
+         lambda_n != 10000) %>%
   mutate(abundance = factor(abundance),
          value = trans - csr,
          method = factor(method,
@@ -101,15 +102,15 @@ p_bothClust_expectation = df_exp %>%
   geom_boxplot() +
   labs(x = "Proportion of immune cells",
        y = "Degree of clustering",
-       title = "Alternative: background and immune both clustered") +
+       title = "Background and immune both clustered") +
   theme_minimal() +
   scale_fill_manual(values = my_colors) +
   geom_hline(yintercept = 0, linetype = 2, color = "gray") +
-  theme(legend.position = "bottom",
+  theme(legend.position = c(0.6, 0.4),
         legend.title = element_blank()) +
   facet_grid(type ~ lambda_n, labeller = labeller(lambda_n = label_parsed, type = label_value))
 
-p_bothClust_expectation
+
 ```
 
 
@@ -133,6 +134,7 @@ df_var = map_dfr(files_var, merge_files, variance = TRUE) %>%
                       labels = c("independent clusters", "dependent clusters")))
 ```
 
+
 ```{r}
 power_df = df_var %>%
   filter(r == 0.25) %>%
@@ -143,8 +145,6 @@ power_df = df_var %>%
   mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n))
 
-power_df %>%
-  arrange(n_sim)
 
 p_bothClust_power = power_df %>%
   ggplot(aes(lambda_n, power, group = method,
@@ -152,14 +152,12 @@ p_bothClust_power = power_df %>%
   geom_point(size = 3) +
   scale_color_manual(values = my_colors) +
   geom_line(linewidth = 1.25) +
-  labs(y = "Power", x = expression(lambda[n]),
-       title = "Background and immune both clustered") +
+  labs(y = "Power", x = expression(lambda[n])) +
   ylim(0, 1) +
   geom_hline(yintercept = 0.9, linetype = 4) +
-  theme(legend.position = "bottom", legend.title = element_blank()) +
+  theme(legend.position = c(0.5, 0.3), legend.title = element_blank()) +
   facet_grid(type ~ abundance, labeller = labeller(abundance = label_both, type = label_value))
 
-p_bothClust_power
 ```
 
 
