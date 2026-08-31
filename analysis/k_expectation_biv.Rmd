@@ -33,11 +33,11 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 my_colors <- c(
-  "K" = "#440154",
-  "Kinhom" = "#414487",
-  "perm" = "#2A788E",
-  "KAMP" = "#7AD151",
-  "KAMP lite" = "#FDE725"
+  "K"         = "#6A3D9A",  # purple
+  "Kinhom"    = "#1F78B4",  # blue
+  "perm"      = "#4DAF4A",  # green
+  "KAMP"      = "#D55E00",  # vermillion
+  "KAMP lite" = "#E69F00"   # orange
 )
 
 theme_set(theme_bw() + theme(legend.position = "bottom"))

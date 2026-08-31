@@ -39,7 +39,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 my_colors <- c(
   "K"         = "#6A3D9A",  # purple
   "Kinhom"    = "#1F78B4",  # blue
-  "perm"      = "#009E73",  # bluish green
+  "perm"      = "#4DAF4A",  # green
   "KAMP"      = "#D55E00",  # vermillion
   "KAMP lite" = "#E69F00"   # orange
 )

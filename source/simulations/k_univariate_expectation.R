@@ -37,8 +37,8 @@ source(here::here("source", "utils_k.R"))
 ###############################################################
 
 n = c(1000, 2000, 5000, 10000)
-abundance = c(0.01, 0.1, 0.2)
-type = c("hom", "inhom", "homClust", "inhomClust", "bothClust")
+abundance = c(0.001, 0.01, 0.1, 0.2)
+type = c("hom", "inhom", "homClust", "inhomClust")
 nperm = 1000
 seed_start = 1000
 N_iter = 50

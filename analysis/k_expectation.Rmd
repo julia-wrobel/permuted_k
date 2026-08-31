@@ -34,7 +34,7 @@ knitr::opts_chunk$set(echo = TRUE,
 my_colors <- c(
   "K"         = "#6A3D9A",  # purple
   "Kinhom"    = "#1F78B4",  # blue
-  "perm"      = "#009E73",  # bluish green
+  "perm"      = "#4DAF4A",  # green
   "KAMP"      = "#D55E00",  # vermillion
   "KAMP lite" = "#E69F00"   # orange
 )
@@ -79,16 +79,17 @@ times_df = df %>%
          abundance,
          method,
          time) %>%
-  filter(r == 0.5) %>%
+  #filter(r == 0.5) %>%
   mutate(method = factor(method,
                          levels = c("k", "kinhom", "perm", 
                                     "kamp",  
                                     "kamp_lite"),
                          labels = c("K", "Kinhom","perm", "KAMP",
                                     "KAMP lite"))) %>%
-  group_by(method, type, lambda_n, abundance) %>%
-  summarize(time = median(time), lower = quantile(time, .25), 
-            upper = quantile(time, .75)) %>%
+  group_by(method, lambda_n, abundance) %>%
+  summarize(lower = quantile(time, .25), 
+            upper = quantile(time, .75),
+            time = median(time)) %>%
   ungroup() 
 
 df = df %>%
@@ -222,7 +223,6 @@ pBothClust = df %>%
 
 ```{r}
 p_times = times_df %>%
-  filter(type == "hom") %>%
   mutate(abundance = factor(abundance),
          lambda_n = factor(lambda_n,
                            labels = c("lambda[n]: 1000",
@@ -235,6 +235,10 @@ p_times = times_df %>%
   theme_minimal() + 
   theme(legend.position = "top",
         legend.title = element_blank()) +
+    geom_errorbar(
+    aes(ymin = log(lower), ymax = log(upper)),
+    width = 0.15
+  ) +
   geom_line(aes(group = method), linewidth = 1.25) +
   geom_hline(yintercept = log(1), linetype = 4, color = "gray") +
   scale_color_manual(values = my_colors) +
