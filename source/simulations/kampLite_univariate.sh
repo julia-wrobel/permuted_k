@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --array=1-30%10
+#SBATCH --array=1-36%10
 #SBATCH --job-name=univariate_kamplite_job
-#SBATCH --partition=encore
+#SBATCH --partition=wrobel
 #SBATCH --output=univariate_kamplite.out
 #SBATCH --error=univariate_kamplite.err
 
