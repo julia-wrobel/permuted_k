@@ -50,7 +50,7 @@ Here we load and process simulation results. Full simulations involve 36 scenari
 
 ```{r}
 # load only results for VB and TS
-files = list.files(here::here("output", "kamplite", "20250719"), 
+files = list.files(here::here("output", "kamplite", "20260831"), 
 									 full.names =  TRUE)
 
 # call merge_files() defined in utils.R
@@ -68,7 +68,7 @@ times_df = df %>%
          abundance,
          p_thin,
          time) %>%
-  filter(r == 0.5) %>%
+  filter(r == .5) %>%
   arrange(p_thin)
 
 df = df %>%
@@ -77,7 +77,7 @@ df = df %>%
          ) %>%
   mutate(abundance = factor(abundance),
          value = trans-csr)  %>%
-  filter(value < 25) %>%
+  #filter(value < 25) %>%
     mutate(type = factor(type, levels = c("hom", "inhom", "homClust", "inhomClust"),
                             labels = c("homogeneous",
                                        "inhomogeneous",
@@ -140,12 +140,13 @@ p_power = power_df %>%
   geom_line(linewidth = 1.25) +
   labs(y = "Power", x = expression(lambda[n]),
        title = "Power") +
-  ylim(0.025, 1) +
+  #ylim(0.025, 1) +
   geom_hline(yintercept = 0.9, linetype = 4) +
   theme_minimal() + 
   theme(legend.position = "none", legend.title = element_blank()) +
   facet_wrap(~abundance, ncol = 3, scales= "free_x", labeller = label_both)
 
+p_power
 
 
 ```

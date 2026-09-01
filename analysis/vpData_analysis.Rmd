@@ -488,11 +488,15 @@ ovarian %>%
   group_by(sample_id) %>%
   summarize(n = n(),
             m_cd19 = sum(phenotype == "immune1"),
-            m_cd68 = sum(phenotype == "immune2")) %>%
+            m_cd68 = sum(phenotype == "immune2"),
+            m_cd19_68 = m_cd19 + m_cd68) %>%
   ungroup()  %>%
   # only 71 subjects have at least 2 B-cells and at least 3 macrophages
   filter(m_cd68 >= 2, m_cd19 >= 2) %>%
-  pivot_longer(n:m_cd68, names_to = "stat", values_to = "value") %>%
+  mutate(p_m = m_cd19_68/n,
+         p_cd19 = m_cd19/n,
+         p_cd68 = m_cd68/n) %>%
+  pivot_longer(n:p_cd68, names_to = "stat", values_to = "value") %>%
   group_by(stat) %>%
   summarize(median = median(value),
             q25 = quantile(value, .25),
