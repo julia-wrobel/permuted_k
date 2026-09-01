@@ -3,6 +3,7 @@
 # define function for simulating univariate mIF data. Returns object with and without holes
 ## lambda_n: intensity for background cells
 ## lambda_m: intensity for marker positive cells
+## abundance: target abundance for immune cells; for bivariate can be c(abundance1, abundance2)
 ## holes: should an image be simulated with or without holes
 ## type: defines the distribution of the point process- homogeneous, inhomogeneous, or clustered
 ##   "homClust"/"inhomClust": cell positivity is spatially clustered (kernel-based)
@@ -48,18 +49,21 @@ sim_scSpatial <- function(lambda_n,
       rename(immune1 = `Cell 1 Assignment`,
              immune2 = `Cell 2 Assignment`)
 
+    abundance1 = abundance[1]
+    abundance2 = ifelse(length(abundance) > 1, abundance[2], abundance[1])
+
     phat1 = sum(pp$immune1)/nrow(pp)
     phat2 = sum(pp$immune2)/nrow(pp)
 
-    if(phat1 > abundance){
+    if(phat1 > abundance1){
       nhat = nrow(pp)
-      nthin = round((phat1 - abundance) * nhat)
+      nthin = round((phat1 - abundance1) * nhat)
       indices = which(pp$immune1 == 1)
       pp$immune1[sample(indices, nthin)] <- 0
     }
-    if(phat2 > abundance){
+    if(phat2 > abundance2){
       nhat = nrow(pp)
-      nthin = round((phat2 - abundance) * nhat)
+      nthin = round((phat2 - abundance2) * nhat)
       indices = which(pp$immune2 == 1)
       pp$immune2[sample(indices, nthin)] <- 0
     }

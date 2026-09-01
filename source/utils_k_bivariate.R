@@ -105,6 +105,53 @@ get_k_bivariate = function(ppp_obj,
 }
 
 
+## function for calculating KAMP lite only in simulated data, bivariate version.
+## Takes in full ppp object with marks "immune1"/"immune2"/"background".
+## calculates time
+## can then apply this to a list of ppp objects
+get_kamplite_biv = function(ppp_obj,
+                   rvec = c(0, .05, .075,.1, .15, .2),
+                   thinning = 0.5){
+
+
+  k = Kcross(ppp_obj, i = "immune1", j = "immune2",
+             r = rvec,
+             correction = c("trans"))
+
+  ################################################################################
+  # Expectation
+  ################################################################################
+  # calculate kamp statistic on 50% thinned data
+  tic()
+  ppp_obj_lite = rthin(ppp_obj, P = 1- thinning)
+  if(thinning == 0){
+    ppp_obj_lite = ppp_obj
+  }
+  kamp_lite = Kest(ppp_obj_lite,
+                   r = rvec,
+                   correction = c("trans")) %>%
+    as_tibble() %>%
+    mutate(method = "kamp_lite",
+           csr = trans,
+           trans = k$trans,
+           p_thin = thinning) %>%
+    select(r, csr, trans, method, p_thin)
+  time_kamplite = toc()
+
+
+  ################################################################################
+  # Variance
+  ################################################################################
+  kamplite_var = map_dfr(rvec, get_permutation_distribution, ppp_obj = ppp_obj_lite, bivariate = TRUE)
+
+  kamp_lite = left_join(kamp_lite, kamplite_var) %>%
+    select(-khat, -expectation) %>%
+    mutate(time = time_kamplite$toc - time_kamplite$tic)
+
+  return(kamp_lite)
+}
+
+
 ## this function is for getting the variance and hypothesis test for each statistic
 get_k_power_biv = function(ppp_obj, rvec = c(0, 0.25, 0.5, 1)){
 
